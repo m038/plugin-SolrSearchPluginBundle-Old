@@ -1,0 +1,20 @@
+services:
+    newscoop_solrsearch_plugin.lifecyclesubscriber:
+        class: Newscoop\SolrSearchPluginBundle\EventListener\LifecycleSubscriber
+        arguments:
+            - @em
+        tags:
+            - { name: kernel.event_subscriber}
+
+    newscoop_solrsearch_plugin.configure_menu_listener:
+        class: Newscoop\SolrSearchPluginBundle\EventListener\ConfigureMenuListener
+        tags:
+            - { name: kernel.event_listener, event: newscoop_newscoop.menu_configure, method: onMenuConfigure }
+        arguments:
+            - @translator
+
+    newscoop_solrsearch_plugin.hooks.listener:
+        class:     "Newscoop\SolrSearchPluginBundle\EventListener\HooksListener"
+        arguments: ["@service_container"]
+        tags:
+            - { name: kernel.event_listener, event: newscoop_admin.interface.article.edit.sidebar, method: sidebar }

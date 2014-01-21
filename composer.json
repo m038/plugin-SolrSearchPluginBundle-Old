@@ -1,0 +1,23 @@
+{
+    "name": "m038/solr-search-plugin-bundle",
+    "description": "Solr search bundle for Newscoop",
+    "keywords": ["newscoop", "cms", "integration", "solr", "search", "indexing"],
+    "version": "0.2",
+    "type": "newscoop-plugin",
+    "license": "GPL-3.0",
+    "authors": [
+        {
+            "name": "Mischa Gorinskat",
+            "email": "mischa.gorinskat@sourcefabric.org"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.3",
+        "newscoop/plugins-installer": ">=v0.2"
+    },
+    "autoload": {
+        "psr-0": { "Newscoop\\SolrSearchPluginBundle\\NewscoopSolrSearchPluginBundle": "" }
+    },
+    "target-dir": "Newscoop/SolrSearchPluginBundle",
+    "minimum-stability": "dev"
+}
