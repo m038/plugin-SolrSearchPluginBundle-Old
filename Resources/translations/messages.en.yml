@@ -1,9 +1,3 @@
 Plugins: Plugins
 plugin:
-  sidebar:
-    name: "SolrSearchPluginBundle"
-    info: "This is response from plugin hook!"
-  admin:
-    title: "Test plugin page"
-    titlecontent: Solr Search Plugin
-    content: Solr Search Plugin content
+  name: "SolrSearchPluginBundle"

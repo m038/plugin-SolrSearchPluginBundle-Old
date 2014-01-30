@@ -1,4 +1,0 @@
-newscoop_example_plugin:
-    resource: "@NewscoopSolrSearchPluginBundle/Controller/DefaultController.php"
-    type:     annotation
-    prefix:   /

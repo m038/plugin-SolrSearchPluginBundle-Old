@@ -24,26 +24,26 @@ class LifecycleSubscriber implements EventSubscriberInterface
 
     public function install(GenericEvent $event)
     {
-        $tool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
-        $tool->updateSchema($this->getClasses(), true);
+        // $tool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
+        // $tool->updateSchema($this->getClasses(), true);
 
         // Generate proxies for entities
-        $this->em->getProxyFactory()->generateProxyClasses($this->getClasses(), __DIR__ . '/../../../../library/Proxy');
+        // $this->em->getProxyFactory()->generateProxyClasses($this->getClasses(), __DIR__ . '/../../../../library/Proxy');
     }
 
     public function update(GenericEvent $event)
     {
-        $tool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
-        $tool->updateSchema($this->getClasses(), true);
+        // $tool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
+        // $tool->updateSchema($this->getClasses(), true);
 
         // Generate proxies for entities
-        $this->em->getProxyFactory()->generateProxyClasses($this->getClasses(), __DIR__ . '/../../../../library/Proxy');
+        // $this->em->getProxyFactory()->generateProxyClasses($this->getClasses(), __DIR__ . '/../../../../library/Proxy');
     }
 
     public function remove(GenericEvent $event)
     {
-        $tool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
-        $tool->dropSchema($this->getClasses(), true);
+        // $tool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
+        // $tool->dropSchema($this->getClasses(), true);
     }
 
     public static function getSubscribedEvents()
