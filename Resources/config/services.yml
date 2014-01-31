@@ -10,3 +10,8 @@ services:
         class: "Newscoop\SolrSearchPluginBundle\Search\SolrIndexClient"
         arguments:
             - @service_container
+
+    newscoop_solrsearch_plugin.query_service:
+        class: Newscoop\SolrSearchPluginBundle\Services\SolrQueryService
+        arguments:
+            - @service_container
