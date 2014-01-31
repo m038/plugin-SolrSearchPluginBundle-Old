@@ -26,7 +26,6 @@ class SolrIndexClient implements IndexClientInterface
 
     const SOLR_URL = 'http://localhost:8983/solr';
     const UPDATE_URI = '/{core}/update/json?commit=true';
-    const QUERY_URI = '/{core}/select{?q,fq,sort,start,rows,fl,wt,df,defType,qf}';
 
     /**
      * Indexable item
@@ -55,7 +54,7 @@ class SolrIndexClient implements IndexClientInterface
     private $cores;
 
     /**
-     * @var Zend_Http_Client
+     * @var Newscoop\Http\Client
      */
     private $client;
 
