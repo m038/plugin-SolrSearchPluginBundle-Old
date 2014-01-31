@@ -1,0 +1,4 @@
+newscoop_solrsearch_plugin:
+    resource: "@NewscoopSolrSearchPluginBundle/Controller"
+    type:     annotation
+    prefix:   /
