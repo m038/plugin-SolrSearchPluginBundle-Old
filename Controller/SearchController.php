@@ -42,7 +42,7 @@ class SearchController extends Controller
 
             $response = new Response();
             $smarty = $templatesService->getSmarty();
-            $response->setContent($templatesService->fetchTemplate("search.tpl"));
+            $response->setContent($templatesService->fetchTemplate("search_index.tpl"));
         }
 
         return $response;
