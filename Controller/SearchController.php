@@ -63,10 +63,20 @@ class SearchController extends Controller
             '-section:swissinfo', // filter en news
         )));
 
+
+        $sort = 'score desc';
+        if (array_key_exists('sort', $parameters)) {
+            if ($parameters['sort'] === 'latest') {
+                $sort = 'published desc';
+            } elseif ($parameters['sort'] === 'oldest') {
+                $sort = 'published asc';
+            }
+        }
+
         return array_merge($queryService->encodeParameters($parameters), array(
             'q' => $this->buildSolrQuery($parameters),
             'fq' => empty($fq) ? '' : "{!tag=t}$fq",
-            'sort' => $parameters['sort'] === 'latest' ? 'published desc' : ($parameters['sort'] === 'oldest' ? 'published asc' : 'score desc'),
+            'sort' => ,
             'facet' => 'true',
             'facet.field' => '{!ex=t}type',
             'spellcheck' => 'true',
