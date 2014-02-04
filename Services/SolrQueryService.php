@@ -4,11 +4,16 @@ namespace Newscoop\SolrSearchPluginBundle\Services;
 
 use Doctrine\ORM\EntityManager;
 use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Guzzle\Http\Client;
 use Guzzle\Http\QueryString;
+use Guzzle\Http\Exception\ServerErrorResponseException;
 use Newscoop\Search\QueryInterface;
 use Newscoop\Entity\Topic;
+use Newscoop\SolrSearchPluginBundle\Search\SolrException;
+use Exception;
+use DateTime;
 
 /**
  * Configuration service for article type
@@ -16,9 +21,6 @@ use Newscoop\Entity\Topic;
 class SolrQueryService implements QueryInterface
 {
     const LIMIT = 12;
-
-    const SOLR_URL = 'http://localhost:8983/solr';
-    const QUERY_URI = '/{core}/select';
 
     /**
      * @var array
@@ -46,6 +48,27 @@ class SolrQueryService implements QueryInterface
     );
 
     /**
+     * Configuration data
+     *
+     * @var array
+     */
+    private $config = array();
+
+    /**
+     * Solr location
+     *
+     * @var string
+     */
+    private $url;
+
+    /**
+     * Solr query uri
+     *
+     * @var string
+     */
+    private $query_uri;
+
+    /**
      * Initialize service data
      *
      * @param Symfony\Component\DependencyInjection\Container $container
@@ -56,16 +79,15 @@ class SolrQueryService implements QueryInterface
         $this->em = $this->container->get('em');
         $this->router = $this->container->get('router');
         $this->request = $this->container->get('request');
-    }
 
-    /**
-     * Build solr params array
-     *
-     * @return array
-     */
-    public function buildSolrParams()
-    {
+        try {
+            $this->config = $this->container->getParameter('SolrSearchPluginBundle');
+        } catch(Exception $e) {
+            return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
+        }
 
+        $this->url = $this->getConfig('url');
+        $this->query_uri = $this->getConfig('query_uri');
     }
 
     /**
@@ -80,31 +102,23 @@ class SolrQueryService implements QueryInterface
             return;
         }
 
-        if (array_key_exists($date, $this->dates)) {
-            return sprintf('published:%s', $this->dates[$date]);
+        $dates = $this->getConfig('dated');
+
+        if (array_key_exists($date, $dates)) {
+            return sprintf('published:%s', $dates[$date]);
         }
 
         try {
             list($from, $to) = explode(',', $date, 2);
-            $fromDate = empty($from) ? null : new \DateTime($from);
-            $toDate = empty($to) ? null : new \DateTime($to);
-        } catch (\Exception $e) {
+            $fromDate = empty($from) ? null : new DateTime($from);
+            $toDate = empty($to) ? null : new DateTime($to);
+        } catch (Exception $e) {
             return;
         }
 
         return sprintf('published:[%s TO %s]',
             $fromDate === null ? '*' : $fromDate->format('Y-m-d\TH:i:s\Z') . '/DAY',
             $toDate === null ? '*' : $toDate->format('Y-m-d\TH:i:s\Z') . '/DAY');
-    }
-
-    /**
-     * Decode solr response
-     *
-     * @return array
-     */
-    public function decodeSolrResponse(\Zend_Http_Response $response)
-    {
-
     }
 
     public function encodeParameters(array $parameters)
@@ -147,50 +161,74 @@ class SolrQueryService implements QueryInterface
 
     public function find(array $filter = array())
     {
+        $translator = $this->container->get('translator');
         $client = new Client();
 
-        // TODO: replace by language
-        $core = 'de-DE';
+        if (array_key_exists('core-language', $filter)) {
+            $core = $filter['core-language'];
+            unset($filter['core-language']);
+        } else {
+            $defaultCore = $this->container->getParameter('SolrSearchPluginBundle.default_core');
+            if ($defaultCore === null) {
+                throw new SolrException($translator->trans('plugin.error.solrcore'));
+            }
+        }
 
-        $uri = self::SOLR_URL . str_replace('{core}', $core, self::QUERY_URI);
+        $uri = $this->url . str_replace('{core}', $core, $this->query_uri);
         $uri .= '?'.http_build_query($filter);
 
+        // DEBUG
+        // $uri = str_replace('json', 'xml', $uri);
         //echo '$uri: '.$uri.'<br>'; exit;
 
-        $request = $client->get($uri);
+        $solrRequest = $client->get($uri);
 
         try {
-            $response = $request->send();
-        } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
-            $this->_forward('error', 'search', 'default');
-            return false;
+            $solrResponse = $solrRequest->send();
+        } catch(ServerErrorResponseException $e) {
+            return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
+        } catch (Exception $e) {
+            throw new SolrException($translator->trans('plugin.error.curl'));
         }
 
-        if (!$response->isSuccessful()) {
-            $this->_forward('error', 'search', 'default');
-            return;
+        if (!$solrResponse->isSuccessful()) {
+            return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
         }
 
-        if ($response->isContentType('application/json')) {
-            return new JsonResponse($this->decodeResponse($response->getBody(true)));
+        if ($solrResponse->isContentType('application/json')) {
+            return new JsonResponse($this->decodeResponse($solrResponse->getBody(true)));
         }
 
-        if ($response->isContentType('application/xml')) {
-            return new JsonResponse($this->decodeResponse($response));
+        if ($solrResponse->isContentType('application/xml')) {
+
+            $solrArray = $this->decodeResponse($solrResponse->getBody(true));
+
+            $serializer = $this->container->get('jms_serializer');
+            // TODO: check result of xml conversion, is not compatibale with current xml format
+            $xmlContent = $serializer->serialize($solrArray, 'xml');
+
+            $response = new Response();
+            $response->setContent($xmlContent);
+            $response->headers->set('Content-Type', 'application/xml'); // TODO: Was rss-xml, check if possible to change
         }
 
         return $response;
+    }
 
-        // if ($this->_helper->contextSwitch->getCurrentContext() === 'json') {
-        //     $this->_helper->json($this->decodeSolrResponse($response));
-        //     return;
-        // }
+    /**
+     * Returns configuration array or part of it.
+     *
+     * @param  string $key Key to get only specific part from configuration
+     *
+     * @return mixed      Returns array with configuration or null if config
+     *                    isn't initiated properly.
+     */
+    public function getConfig($key = null)
+    {
+        if (count($this->config) == 0) {
+            return null;
+        }
 
-        // $this->view->result = $this->decodeSolrResponse($response);
-
-        // if ($this->_helper->contextSwitch->getCurrentContext() === 'xml') {
-        //     $this->getResponse()->setHeader('Content-Type', 'application/rss-xml', true);
-        //     $this->render('xml');
-        // }
+        return ($key !==  null && array_key_exists($key, $this->config)) ? $this->config[$key] : $this->config;
     }
 }

@@ -29,15 +29,28 @@ class OmnitickerController extends Controller
 
     /**
      * @Route("/omniticker/")
+     * @Route("/{language}/omniticker/")
      */
-    public function omnitickerAction(Request $request)
+    public function omnitickerAction(Request $request, $language = null)
     {
         if ($this->container->get('webcode')->findArticleByWebcode($request->query->get('q')) !== null) {
 
-            $this->_helper->redirector->setCode(302);
-            $this->_helper->redirector->gotoRoute(array(
-                'webcode' => $request->get('q'),
-            ), 'webcode', false, false);
+            return $this->redirect(
+                sprintf('/%s', $request->get('q')), 302
+            );
+        }
+
+        $language = $this->container->get('em')
+            ->getRepository('Newscoop\Entity\Language')
+            ->findOneByCode($language);
+
+        if ($language === null) {
+            $language = $this->container->get('em')
+                ->getRepository('Newscoop\Entity\Language')
+                ->findByRFC3066bis('en-US', true);
+            if ($language == null) {
+                throw new NewscoopException('Could not find default language.');
+            }
         }
 
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
@@ -46,6 +59,7 @@ class OmnitickerController extends Controller
         if (array_key_exists('format', $parameters)) {
 
             $solrParameters = $this->encodeParameters($parameters);
+            $solrParameters['core-language'] = $language->getRFC3066bis();
             $response = $queryService->find($solrParameters);
         } else {
 
@@ -89,13 +103,17 @@ class OmnitickerController extends Controller
      */
     private function buildSolrSourceParam($parameters)
     {
+        $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
+
+        $sourcesConfig = $this->container->getParameter('SolrSearchPluginBundle');
+        $sourcesConfig = $sourcesConfig['application']['omniticker']['types'];
         $source = (array_key_exists('source', $parameters)) ? $parameters['source'] : null;
 
-        if (!empty($source) && array_key_exists($source, $this->sources)) {
+        if (!empty($source) && array_key_exists($source, $sourcesConfig)) {
             $sources = (array) $this->sources[$source];
         } else {
             $sources = array();
-            foreach ($this->sources as $types) {
+            foreach ($sourcesConfig as $types) {
                 $sources = array_merge($sources, (array) $types);
             }
         }

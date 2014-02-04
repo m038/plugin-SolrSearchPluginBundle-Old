@@ -5,7 +5,7 @@
  * @license http://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-namespace Newscoop\OmnitickerPluginBundle\Controller;
+namespace Newscoop\SolrSearchPluginBundle\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
@@ -13,24 +13,24 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Newscoop\Http\Client;
-use Newscoop\NewscoopException;
 
-class SearchController extends Controller
+class TopicController extends Controller
 {
     /**
-     * @Route("/search/")
-     * @Route("/{language}/search/")
+     * @var array
      */
-    public function searchAction(Request $request, $language = null)
+    private $sources = array(
+        'tageswoche' => array('news', 'dossier', 'blog'),
+    );
+
+    // TODO: Fix methods to match current parameters
+
+    /**
+     * @Route("/topic/")
+     * @Route("/{language}/topic/")
+     */
+    public function topicAction(Request $request, $language = null)
     {
-        if ($this->container->get('webcode')->findArticleByWebcode($request->query->get('q')) !== null) {
-
-            return $this->redirect(
-                sprintf('/%s', $request->get('q')), 302
-            );
-        }
-
         $language = $this->container->get('em')
             ->getRepository('Newscoop\Entity\Language')
             ->findOneByCode($language);
@@ -47,19 +47,10 @@ class SearchController extends Controller
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         $parameters = $request->query->all();
 
-        if (array_key_exists('format', $parameters)) {
+        $solrParameters = $this->encodeParameters($parameters);
+        $solrParameters['core-language'] = $language->getRFC3066bis();
 
-            $solrParameters = $this->encodeParameters($parameters);
-            $solrParameters['core-language'] = $language->getRFC3066bis();
-            $response = $queryService->find($solrParameters);
-        } else {
-
-            $templatesService = $this->container->get('newscoop.templates.service');
-
-            $response = new Response();
-            $smarty = $templatesService->getSmarty();
-            $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
-        }
+        $response = $queryService->find($solrParameters);
 
         return $response;
     }
@@ -78,7 +69,6 @@ class SearchController extends Controller
             $queryService->buildSolrDateParam($parameters),
             '-section:swissinfo', // filter en news
         )));
-
 
         $sort = 'score desc';
         if (array_key_exists('sort', $parameters)) {
@@ -130,7 +120,7 @@ class SearchController extends Controller
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         //$types = $queryService->getConfig('types');
         $types = $this->container->getParameter('SolrSearchPluginBundle');
-        $types = $types['application']['search']['types'];
+        $types = $types['application']['topic']['types'];
 
         if (!array_key_exists('type', $parameters) || !array_key_exists($parameters['type'], $types)) {
             return;
