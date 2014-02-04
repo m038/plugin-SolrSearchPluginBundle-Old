@@ -18,7 +18,7 @@ use Newscoop\Http\Client;
 class SearchController extends Controller
 {
     /**
-     * @Route("/search")
+     * @Route("/search/")
      */
     public function searchAction(Request $request)
     {
