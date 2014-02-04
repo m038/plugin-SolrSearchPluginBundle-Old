@@ -150,9 +150,9 @@ class SolrQueryService implements QueryInterface
         $client = new Client();
 
         // TODO: replace by language
-        $core = '';//de-DE';
+        $core = '';//'de-DE';
 
-        $uri = self::SOLR_URL . str_replace('{core}', $core, self::QUERY_URI);
+        $uri = self::SOLR_URL . str_replace('{core}/', $core, self::QUERY_URI);
         $uri .= '?'.http_build_query($filter);
 
         //echo '$uri: '.$uri.'<br>'; exit;
