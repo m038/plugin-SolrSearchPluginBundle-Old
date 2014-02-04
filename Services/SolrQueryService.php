@@ -112,7 +112,7 @@ class SolrQueryService implements QueryInterface
         return array(
             'wt' => 'json',
             'rows' => self::LIMIT,
-            'start' => max(0, (int) $parameters['start']),
+            'start' => max(0, (int) (array_key_exists('start', $parameters) ? $parameters['start'] : 0)),
         );
     }
 
