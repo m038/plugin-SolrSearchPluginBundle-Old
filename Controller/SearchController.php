@@ -76,7 +76,7 @@ class SearchController extends Controller
         return array_merge($queryService->encodeParameters($parameters), array(
             'q' => $this->buildSolrQuery($parameters),
             'fq' => empty($fq) ? '' : "{!tag=t}$fq",
-            'sort' => ,
+            'sort' => $sort,
             'facet' => 'true',
             'facet.field' => '{!ex=t}type',
             'spellcheck' => 'true',
