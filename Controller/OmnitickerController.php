@@ -28,7 +28,7 @@ class OmnitickerController extends Controller
     );
 
     /**
-     * @Route("/omniticker")
+     * @Route("/omniticker/")
      */
     public function omnitickerAction(Request $request)
     {
