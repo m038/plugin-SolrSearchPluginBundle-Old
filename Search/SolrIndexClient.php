@@ -24,9 +24,6 @@ class SolrIndexClient implements IndexClientInterface
 {
     const APPLICATION_JSON = 'application/json';
 
-    const SOLR_URL = 'http://localhost:8983/solr';
-    const UPDATE_URI = '/{core}/update/json?commit=true';
-
     /**
      * Indexable item
      *
@@ -69,6 +66,27 @@ class SolrIndexClient implements IndexClientInterface
     private $delete = array();
 
     /**
+     * Configuration data
+     *
+     * @var array
+     */
+    private $config = array();
+
+    /**
+     * Solr location
+     *
+     * @var string
+     */
+    private $url;
+
+    /**
+     * Solr query uri
+     *
+     * @var string
+     */
+    private $query_uri;
+
+    /**
      * @param Symfony\Component\DependencyInjection\Container $container
      */
     public function __construct(Container $container)
@@ -76,6 +94,15 @@ class SolrIndexClient implements IndexClientInterface
         $this->client = new Client();
         $this->container = $container;
         $this->cores = $this->getCoresFromSolr();
+
+        try {
+            $this->config = $this->container->getParameter('SolrSearchPluginBundle');
+        } catch(Exception $e) {
+            return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
+        }
+
+        $this->url = $this->getConfig('url');
+        $this->query_uri = $this->getConfig('query_uri');
 
         $this->initCommands();
     }
@@ -138,6 +165,8 @@ class SolrIndexClient implements IndexClientInterface
      */
     public function deleteAll()
     {
+        $translator = $this->container->get('translator');
+
         foreach ($this->cores as $core) {
 
             $commands = $this->buildDeleteCommands($core);
@@ -145,18 +174,17 @@ class SolrIndexClient implements IndexClientInterface
                 continue;
             }
 
-            $uri = self::SOLR_URL . str_replace('{core}', $core, self::UPDATE_URI);
+            $uri = $this->url . str_replace('{core}', $core, $this->update_uri);
             $request = $this->client->post($uri);
             $request->setBody('{'.implode(',', $commands).'}', self::APPLICATION_JSON);
             try {
                 $response = $request->send();
             } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
-                echo "Request failed\n" . $e->getMessage() ."\n";
-                return false;
+                throw new SolrException($translator->trans('plugin.error.curl') .' ('. $e->getMessage() .')');
             }
 
             if (!$response->isSuccessful()) {
-                throw new SolrException('Solr responded negative.');
+                throw new SolrException($translator->trans('plugin.error.response_false'));
             }
 
             // TODO: Clear commands nicer
@@ -180,18 +208,20 @@ class SolrIndexClient implements IndexClientInterface
                 continue;
             }
 
-            $uri = self::SOLR_URL . str_replace('{core}', $core, self::UPDATE_URI);
+            $uri = $this->url . str_replace('{core}', $core, $this->update_uri);
             $request = $this->client->post($uri);
             $request->setBody('{'.implode(',', $commands).'}', self::APPLICATION_JSON);
+
             try {
                 $response = $request->send();
             } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
-                echo "Request failed\n" . $e->getMessage() ."\n";
-                return false;
+                throw new SolrException($translator->
+                    trans('plugin.error.curl') .' ('. $e->getMessage() .')');
             }
 
             if (!$response->isSuccessful()) {
-                throw new SolrException('Solr responded negative.');
+                throw new SolrException($translator->
+                    trans('plugin.error.response_false'));
             }
         }
 
@@ -240,7 +270,7 @@ class SolrIndexClient implements IndexClientInterface
     private function getCoresFromSolr()
     {
         // Get cores from solr
-        $request = $this->client->get(self::SOLR_URL . '/admin/cores?action=STATUS');
+        $request = $this->client->get($this->url . '/admin/cores?action=STATUS');
         $response = $request->send();
         $body = $response->getBody();
 
@@ -250,7 +280,8 @@ class SolrIndexClient implements IndexClientInterface
         $cores = array();
 
         if (count($names) === 0) {
-            throw SolrException('Unable to retrieve core names from Solr.');
+            throw SolrException($this->container->get('translator')->
+                trans('plugin.error.solr_core_read'));
         }
 
         foreach ($names AS $name) {
@@ -273,7 +304,8 @@ class SolrIndexClient implements IndexClientInterface
             if (in_array($core, $this->cores)) {
                 return $core;
             } else {
-                throw SolrException('Returned core value for item is not valid Solr core.');
+                throw SolrException($this->container->
+                    get('translator')->trans('plugin.error.solr_core_item'));
             }
         } else {
             // Return all cores
