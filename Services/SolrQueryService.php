@@ -25,6 +25,7 @@ class SolrQueryService implements QueryInterface
     /**
      * @var array
      */
+    // TODO: Make this configurable
     protected $dates = array(
         '24h' => '[NOW-1DAY/HOUR TO *]',
         '1d' => '[NOW/DAY TO *]',
@@ -102,7 +103,8 @@ class SolrQueryService implements QueryInterface
             return;
         }
 
-        $dates = $this->getConfig('dated');
+        // TODO: Fix later
+        $dates = $this->dates;//$this->getConfig('dated');
 
         if (array_key_exists($date, $dates)) {
             return sprintf('published:%s', $dates[$date]);

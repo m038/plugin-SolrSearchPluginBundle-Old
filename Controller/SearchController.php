@@ -47,17 +47,17 @@ class SearchController extends Controller
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         $parameters = $request->query->all();
 
-        if (array_key_exists('format', $parameters)) {
+        $solrParameters = $this->encodeParameters($parameters);
+        $solrParameters['core-language'] = $language->getRFC3066bis();
+        $response = $queryService->find($solrParameters);
 
-            $solrParameters = $this->encodeParameters($parameters);
-            $solrParameters['core-language'] = $language->getRFC3066bis();
-            $response = $queryService->find($solrParameters);
-        } else {
+        if (!array_key_exists('format', $parameters)) {
 
             $templatesService = $this->container->get('newscoop.templates.service');
 
             $response = new Response();
             $smarty = $templatesService->getSmarty();
+            $smarty->assign('result', $response-> getContent());
             $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
         }
 
@@ -128,9 +128,10 @@ class SearchController extends Controller
     private function buildSolrTypeParam($parameters)
     {
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
-        //$types = $queryService->getConfig('types');
-        $types = $this->container->getParameter('SolrSearchPluginBundle');
-        $types = $types['application']['search']['types'];
+        $types = $queryService->getConfig('types_search');
+        // TODO: Fix later
+        // $types = $this->container->getParameter('SolrSearchPluginBundle');
+        // $types = $types['application']['search']['types'];
 
         if (!array_key_exists('type', $parameters) || !array_key_exists($parameters['type'], $types)) {
             return;

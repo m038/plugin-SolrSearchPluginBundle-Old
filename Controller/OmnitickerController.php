@@ -105,8 +105,10 @@ class OmnitickerController extends Controller
     {
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
 
-        $sourcesConfig = $this->container->getParameter('SolrSearchPluginBundle');
-        $sourcesConfig = $sourcesConfig['application']['omniticker']['types'];
+        $sourcesConfig = $queryService->getConfig('types_omniticker');
+        // TODO: Fix later
+        // $sourcesConfig = $this->container->getParameter('SolrSearchPluginBundle');
+        // $sourcesConfig = $sourcesConfig['application']['omniticker']['types'];
         $source = (array_key_exists('source', $parameters)) ? $parameters['source'] : null;
 
         if (!empty($source) && array_key_exists($source, $sourcesConfig)) {

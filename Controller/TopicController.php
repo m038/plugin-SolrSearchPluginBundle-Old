@@ -118,9 +118,10 @@ class TopicController extends Controller
     private function buildSolrTypeParam($parameters)
     {
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
-        //$types = $queryService->getConfig('types');
-        $types = $this->container->getParameter('SolrSearchPluginBundle');
-        $types = $types['application']['topic']['types'];
+        $types = $queryService->getConfig('types_topic');
+        // TODO: Fix later
+        // $types = $this->container->getParameter('SolrSearchPluginBundle');
+        // $types = $types['application']['topic']['types'];
 
         if (!array_key_exists('type', $parameters) || !array_key_exists($parameters['type'], $types)) {
             return;
