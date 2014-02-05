@@ -54,10 +54,10 @@ class SearchController extends Controller
         if (!array_key_exists('format', $parameters)) {
 
             $templatesService = $this->container->get('newscoop.templates.service');
+            $smarty = $templatesService->getSmarty();
+            $smarty->assign('result', $response->getContent());
 
             $response = new Response();
-            $smarty = $templatesService->getSmarty();
-            $smarty->assign('result', $response-> getContent());
             $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
         }
 
