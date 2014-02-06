@@ -7,14 +7,16 @@
 
 namespace Newscoop\SolrSearchPluginBundle\Command;
 
-use Symfony\Component\Console\Input\InputArgument,
-    Symfony\Component\Console\Input\InputOption,
-    Symfony\Component\Console;
+use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Index clear command
  */
-class ClearSolrIndexCommand
+class ClearSolrIndexCommand extends ContainerAwareCommand
 {
     /**
      * @see Console\Command\Command
@@ -30,7 +32,7 @@ class ClearSolrIndexCommand
     /**
      * @see Console\Command\Command
      */
-    protected function execute(Console\Input\InputInterface $input, Console\Output\OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $container = $this->getApplication()->getKernel()->getContainer();
         $solrIndexClient = $container->get('index_client.solr');

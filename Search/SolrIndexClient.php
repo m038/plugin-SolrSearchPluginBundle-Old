@@ -101,7 +101,7 @@ class SolrIndexClient implements IndexClientInterface
         }
 
         $this->url = $this->getConfig('url');
-        $this->query_uri = $this->getConfig('query_uri');
+        $this->update_uri = $this->getConfig('update_uri');
 
         $this->cores = $this->getCoresFromSolr();
         $this->initCommands();
@@ -169,14 +169,10 @@ class SolrIndexClient implements IndexClientInterface
 
         foreach ($this->cores as $core) {
 
-            $commands = $this->buildDeleteCommands($core);
-            if (empty($commands)) {
-                continue;
-            }
-
             $uri = $this->url . str_replace('{core}', $core, $this->update_uri);
             $request = $this->client->post($uri);
-            $request->setBody('{'.implode(',', $commands).'}', self::APPLICATION_JSON);
+            $request->setBody('{"delete": { "query":"*:*" }}', self::APPLICATION_JSON);
+
             try {
                 $response = $request->send();
             } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
@@ -186,9 +182,6 @@ class SolrIndexClient implements IndexClientInterface
             if (!$response->isSuccessful()) {
                 throw new SolrException($translator->trans('plugin.error.response_false'));
             }
-
-            // TODO: Clear commands nicer
-            $this->delete[$core] = array();
         }
 
         return true;
