@@ -144,7 +144,7 @@ class OmnitickerController extends Controller
     {
         $section = (array_key_exists('section', $parameters)) ? $parameters['section'] : null;
         if ($section !== null) {
-            return sprintf('section: (%s)', implode(' OR ', array_unique($section)));
+            return sprintf('section:("%s")', json_encode($section));
         }
     }
 }
