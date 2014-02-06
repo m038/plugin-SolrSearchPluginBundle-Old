@@ -191,7 +191,7 @@ class SolrQueryService implements QueryInterface
         } catch(ServerErrorResponseException $e) {
             return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
         } catch (Exception $e) {
-            throw new SolrException($translator->trans('plugin.error.curl') .' - ('. $e->getMessages() .')');
+            throw new SolrException($translator->trans('plugin.error.curl'));
         }
 
         if (!$solrResponse->isSuccessful()) {
