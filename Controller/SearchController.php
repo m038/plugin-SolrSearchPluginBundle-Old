@@ -49,16 +49,19 @@ class SearchController extends Controller
 
         $solrParameters = $this->encodeParameters($parameters);
         $solrParameters['core-language'] = $language->getRFC3066bis();
-        $response = $queryService->find($solrParameters);
+        $solrResponseBody = $queryService->find($solrParameters);
 
         if (!array_key_exists('format', $parameters)) {
 
             $templatesService = $this->container->get('newscoop.templates.service');
             $smarty = $templatesService->getSmarty();
-            $smarty->assign('result', $response->getContent());
+            $smarty->assign('result', json_encode($solrResponseBody));
 
             $response = new Response();
             $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
+        } elseif ($parameters['format'] === 'json') {
+
+            $response = new JsonResponse($solrResponseBody);
         }
 
         return $response;

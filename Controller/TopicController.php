@@ -50,9 +50,9 @@ class TopicController extends Controller
         $solrParameters = $this->encodeParameters($parameters);
         $solrParameters['core-language'] = $language->getRFC3066bis();
 
-        $response = $queryService->find($solrParameters);
+        $solrResponseBody = $queryService->find($solrParameters);
 
-        return $response;
+        return new JsonResponse($solrResponseBody);
     }
 
     /**

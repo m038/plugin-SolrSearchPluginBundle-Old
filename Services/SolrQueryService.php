@@ -103,8 +103,9 @@ class SolrQueryService implements QueryInterface
             return;
         }
 
+        $dates = $this->dates;
         // TODO: Fix later
-        $dates = $this->dates;//$this->getConfig('dated');
+        //$dates = $this->getConfig('dates');
 
         if (array_key_exists($date, $dates)) {
             return sprintf('published:%s', $dates[$date]);
@@ -181,7 +182,7 @@ class SolrQueryService implements QueryInterface
 
         // DEBUG
         // $uri = str_replace('json', 'xml', $uri);
-        //echo '$uri: '.$uri.'<br>'; exit;
+        //echo '$uri: '.$uri.'<br>';// exit;
 
         $solrRequest = $client->get($uri);
 
@@ -190,31 +191,14 @@ class SolrQueryService implements QueryInterface
         } catch(ServerErrorResponseException $e) {
             return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
         } catch (Exception $e) {
-            throw new SolrException($translator->trans('plugin.error.curl'));
+            throw new SolrException($translator->trans('plugin.error.curl') .' - ('. $e->getMessages() .')');
         }
 
         if (!$solrResponse->isSuccessful()) {
             return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
         }
 
-        if ($solrResponse->isContentType('application/json')) {
-            return new JsonResponse($this->decodeResponse($solrResponse->getBody(true)));
-        }
-
-        if ($solrResponse->isContentType('application/xml')) {
-
-            $solrArray = $this->decodeResponse($solrResponse->getBody(true));
-
-            $serializer = $this->container->get('jms_serializer');
-            // TODO: check result of xml conversion, is not compatibale with current xml format
-            $xmlContent = $serializer->serialize($solrArray, 'xml');
-
-            $response = new Response();
-            $response->setContent($xmlContent);
-            $response->headers->set('Content-Type', 'application/xml'); // TODO: Was rss-xml, check if possible to change
-        }
-
-        return $response;
+        return $this->decodeResponse($solrResponse->getBody(true));
     }
 
     /**

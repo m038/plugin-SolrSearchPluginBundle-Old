@@ -56,18 +56,30 @@ class OmnitickerController extends Controller
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         $parameters = $request->query->all();
 
-        if (array_key_exists('format', $parameters)) {
+        $solrParameters = $this->encodeParameters($parameters);
+        $solrParameters['core-language'] = $language->getRFC3066bis();
+        $solrResponseBody = $queryService->find($solrParameters);
 
-            $solrParameters = $this->encodeParameters($parameters);
-            $solrParameters['core-language'] = $language->getRFC3066bis();
-            $response = $queryService->find($solrParameters);
-        } else {
+        if (!array_key_exists('format', $parameters)) {
 
             $templatesService = $this->container->get('newscoop.templates.service');
+            $smarty = $templatesService->getSmarty();
+            $smarty->assign('result', json_encode($solrResponseBody));
 
             $response = new Response();
-            $smarty = $templatesService->getSmarty();
             $response->setContent($templatesService->fetchTemplate("_views/omniticker_index.tpl"));
+        } elseif ($parameters['format'] === 'xml') {
+
+            $templatesService = $this->container->get('newscoop.templates.service');
+            $smarty = $templatesService->getSmarty();
+            $smarty->assign('result', $solrResponseBody);
+
+            $response = new Response();
+            $response->headers->set('Content-Type', 'application/xml'); // TODO: Was rss-xml, check if possible to change
+            $response->setContent($templatesService->fetchTemplate("_views/omniticker_xml.tpl"));
+        } elseif ($parameters['format'] === 'json') {
+
+            $response = new JsonResponse($solrResponseBody);
         }
 
         return $response;
