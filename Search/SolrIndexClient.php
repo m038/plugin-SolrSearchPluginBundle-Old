@@ -93,10 +93,9 @@ class SolrIndexClient implements IndexClientInterface
     {
         $this->client = new Client();
         $this->container = $container;
-        $this->cores = $this->getCoresFromSolr();
 
         try {
-            $this->config = $this->container->getParameter('SolrSearchPluginBundle');
+            $this->config = $container->getParameter('SolrSearchPluginBundle');
         } catch(Exception $e) {
             return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
         }
@@ -104,6 +103,7 @@ class SolrIndexClient implements IndexClientInterface
         $this->url = $this->getConfig('url');
         $this->query_uri = $this->getConfig('query_uri');
 
+        $this->cores = $this->getCoresFromSolr();
         $this->initCommands();
     }
 
@@ -216,7 +216,7 @@ class SolrIndexClient implements IndexClientInterface
                 $response = $request->send();
             } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
                 throw new SolrException($translator->
-                    trans('plugin.error.curl') .' ('. $e->getMessage() .')');
+                    trans('plugin.error.curl') .' - ('. $e->getMessage() .')');
             }
 
             if (!$response->isSuccessful()) {
@@ -366,5 +366,22 @@ class SolrIndexClient implements IndexClientInterface
     private function throwException(Response $response)
     {
         throw new \RuntimeException($response->getMessage(), $response->getStatusCode());
+    }
+
+    /**
+     * Returns configuration array or part of it.
+     *
+     * @param  string $key Key to get only specific part from configuration
+     *
+     * @return mixed      Returns array with configuration or null if config
+     *                    isn't initiated properly.
+     */
+    public function getConfig($key = null)
+    {
+        if (count($this->config) == 0) {
+            return null;
+        }
+
+        return ($key !==  null && array_key_exists($key, $this->config)) ? $this->config[$key] : $this->config;
     }
 }
