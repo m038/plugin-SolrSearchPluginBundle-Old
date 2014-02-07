@@ -132,7 +132,7 @@ class OmnitickerController extends Controller
             }
         }
 
-        return sprintf('type: (%s)', implode(' OR ', array_unique($sources)));
+        return sprintf('type:(%s)', implode(' OR ', array_unique($sources)));
     }
 
     /**
@@ -145,7 +145,7 @@ class OmnitickerController extends Controller
         $section = (array_key_exists('section', $parameters)) ? $parameters['section'] : null;
         if ($section !== null) {
             $section = (is_array($section)) ? $section : array($section);
-            return sprintf('section: (%s)', implode(' OR ', array_unique($section)));
+            return sprintf('section:(%s)', implode(' OR ', array_unique($section)));
         }
     }
 }
