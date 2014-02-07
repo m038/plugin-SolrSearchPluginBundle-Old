@@ -13,6 +13,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Exception;
 
 class OmnitickerController extends Controller
 {
@@ -69,6 +70,14 @@ class OmnitickerController extends Controller
             $response = new Response();
             $response->setContent($templatesService->fetchTemplate("_views/omniticker_index.tpl"));
         } elseif ($parameters['format'] === 'xml') {
+
+            try {
+                foreach ($solrResponseBody['response']['docs'] AS &$doc) {
+                    $doc['link_url'] = $doc['link'];
+                }
+            } catch (Exception $e) {
+                // Array is it as expected
+            }
 
             $templatesService = $this->container->get('newscoop.templates.service');
             $smarty = $templatesService->getSmarty();
