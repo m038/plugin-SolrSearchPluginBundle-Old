@@ -215,6 +215,10 @@ class SolrQueryService implements QueryInterface
             return null;
         }
 
-        return ($key !==  null && array_key_exists($key, $this->config)) ? $this->config[$key] : $this->config;
+        if ($key !==  null && array_key_exists($key, $this->config)) {
+            return $this->config[$key];
+        } else {
+            return $this->config;
+        }
     }
 }
