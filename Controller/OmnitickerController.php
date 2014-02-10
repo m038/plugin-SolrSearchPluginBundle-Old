@@ -84,7 +84,7 @@ class OmnitickerController extends Controller
             $smarty->assign('result', $solrResponseBody);
 
             $response = new Response();
-            $response->headers->set('Content-Type', 'application/rss+xml'); // TODO: Was rss-xml, check if possible to change
+            $response->headers->set('Content-Type', 'application/rss+xml');
             $response->setContent($templatesService->fetchTemplate("_views/omniticker_xml.tpl"));
         } elseif ($parameters['format'] === 'json') {
 
