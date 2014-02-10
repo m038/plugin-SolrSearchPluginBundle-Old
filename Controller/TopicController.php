@@ -13,26 +13,28 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Doctrine\ORM\Query\ResultSetMapping;
 
 class TopicController extends Controller
 {
     /**
      * @var array
      */
-    private $sources = array(
-        'tageswoche' => array('news', 'dossier', 'blog'),
+    protected $sources = array(
+        'news', 'newswire', 'blog',
     );
 
     // TODO: Fix methods to match current parameters
 
     /**
-     * @Route("/topic/")
-     * @Route("/{language}/topic/")
+     * @Route("/themen/{theme_name}/")
+     * @Route("/{language}/themen/{theme_name}/")
      */
-    public function topicAction(Request $request, $language = null)
+    public function topicAction(Request $request, $theme_name, $language = null)
     {
-        $language = $this->container->get('em')
-            ->getRepository('Newscoop\Entity\Language')
+        $em = $this->container->get('em');
+
+        $language = $em->getRepository('Newscoop\Entity\Language')
             ->findOneByCode($language);
 
         if ($language === null) {
@@ -44,6 +46,25 @@ class TopicController extends Controller
             }
         }
 
+        // find Topic
+        // $query = $em->createNativeQuery('
+        //     SELECT NrArticle
+        //     FROM xDossier
+        //     WHERE FShort_Name = ?
+        // ', new ResultSetMapping());
+        // $query->setParameter(1, $theme_name);
+        // $article = $query->getResult();
+
+        // echo '$articleNr: '.$articleNr.'<br>'; exit;
+
+        $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
+            'name' => $theme_name,
+        ));
+
+        // echo '<pre>$topic:'; var_dump($topic); echo '<hr>'; exit;
+
+        // $topicArticle = '';
+
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         $parameters = $request->query->all();
 
@@ -52,7 +73,43 @@ class TopicController extends Controller
 
         $solrResponseBody = $queryService->find($solrParameters);
 
-        return new JsonResponse($solrResponseBody);
+        if (!array_key_exists('format', $parameters)) {
+
+            $topicData = array(
+                'id' => $topic->getTopicId(),
+                'name' => $topic->getName(),
+            );
+
+            $templatesService = $this->container->get('newscoop.templates.service');
+            $smarty = $templatesService->getSmarty();
+            $smarty->assign('result', json_encode($solrResponseBody));
+            $smarty->assign('topic', $topicData);
+
+            $response = new Response();
+            $response->setContent($templatesService->fetchTemplate("_views/topic_index.tpl"));
+        } elseif ($parameters['format'] === 'xml') {
+
+            try {
+                foreach ($solrResponseBody['response']['docs'] AS &$doc) {
+                    $doc['link_url'] = $doc['link'];
+                }
+            } catch (Exception $e) {
+                // Array is it as expected
+            }
+
+            $templatesService = $this->container->get('newscoop.templates.service');
+            $smarty = $templatesService->getSmarty();
+            $smarty->assign('result', $solrResponseBody);
+
+            $response = new Response();
+            $response->headers->set('Content-Type', 'application/rss+xml');
+            $response->setContent($templatesService->fetchTemplate("_views/topic_xml.tpl"));
+        } elseif ($parameters['format'] === 'json') {
+
+            $response = new JsonResponse($solrResponseBody);
+        }
+
+        return $response;
     }
 
     /**
@@ -64,71 +121,43 @@ class TopicController extends Controller
     {
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
 
-        $fq = implode(' AND ', array_filter(array(
-            $this->buildSolrTypeParam($parameters),
-            $queryService->buildSolrDateParam($parameters),
-            '-section:swissinfo', // filter en news
-        )));
-
-        $sort = 'score desc';
-        if (array_key_exists('sort', $parameters)) {
-            if ($parameters['sort'] === 'latest') {
-                $sort = 'published desc';
-            } elseif ($parameters['sort'] === 'oldest') {
-                $sort = 'published asc';
-            }
-        }
-
         return array_merge($queryService->encodeParameters($parameters), array(
-            'q' => $this->buildSolrQuery($parameters),
-            'fq' => empty($fq) ? '' : "{!tag=t}$fq",
-            'sort' => $sort,
-            'facet' => 'true',
-            'facet.field' => '{!ex=t}type',
-            'spellcheck' => 'true',
+            'q' => $this->buildSolrTopicParam($parameters),
+            'fq' => implode(' AND ', array_filter(array(
+                $this->buildSolrSourceParam($parameters),
+                $queryService->buildSolrDateParam($parameters),
+            ))),
+            'sort' => 'published desc',
+            'spellcheck' => 'false',
+            'rows' => (array_key_exists('xml', $parameters) && $parameters['xml'] === 'xml')
+                 ? 20 : 12,
         ));
     }
 
     /**
-     * Build solr query
+     * Build solr source filter
      *
      * @return string
      */
-    private function buildSolrQuery($parameters)
+    private function buildSolrSourceParam(array $parameters)
     {
-        $q = (array_key_exists('q', $parameters)) ? trim($parameters['q']) : sha1(__FILE__); // search for nonsense to show empty search result page
-
-        if ($this->container->get('webcode')->findArticleByWebcode($q) !== null) {
-            return sprintf('webcode:\%s', $q);
+        if (array_key_exists('sources', $parameters)) {
+            $sources = (is_array($parameters['sources'])) ? $parameters['sources'] : array($parameters['sources']);
+            return sprintf('type:(%s)', implode(' OR ', $sources));
         }
-
-        $matches = array();
-        if (preg_match('/^(author|topic):([^"]+)$/', $q, $matches)) {
-            $q = sprintf('%s:"%s"', $matches[1], json_encode($matches[2]));
-        }
-
-        return $q;
+        return;
     }
 
     /**
-     * Build solr type param
+     * Build solr topic filter
      *
      * @return string
      */
-    private function buildSolrTypeParam($parameters)
+    private function buildSolrTopicParam(array $parameters)
     {
-        $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
-        $types = $queryService->getConfig('types_topic');
-        // TODO: Fix later
-        // $types = $this->container->getParameter('SolrSearchPluginBundle');
-        // $types = $types['application']['topic']['types'];
-
-        if (!array_key_exists('type', $parameters) || !array_key_exists($parameters['type'], $types)) {
-            return;
+        if (array_key_exists('topic', $parameters)) {
+            return sprintf('topic:(%s)', json_encode(trim($this->_getParam('topic'), '"')));
         }
-
-        $type = $parameters['type'];
-
-        return sprintf('type:(%s)', is_array($types[$type]) ? implode(' OR ', $types[$type]) : $types[$type]);
+        return;
     }
 }
