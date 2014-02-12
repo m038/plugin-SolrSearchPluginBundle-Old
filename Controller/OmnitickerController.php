@@ -1,8 +1,9 @@
 <?php
 /**
- * @package Newscoop
- * @copyright 2012 Sourcefabric o.p.s.
- * @license http://www.gnu.org/licenses/gpl-3.0.txt
+ * @package   Newscoop\SolrSearchPluginBundle
+ * @author    Mischa Gorinskat <mischa.gorinskat@sourcefabric.org>
+ * @copyright 2014 Sourcefabric o.p.s.
+ * @license   http://www.gnu.org/licenses/gpl-3.0.txt
  */
 
 namespace Newscoop\SolrSearchPluginBundle\Controller;
@@ -13,7 +14,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Exception;
+use Newscoop\NewscoopException;
 
 class OmnitickerController extends Controller
 {
@@ -76,7 +77,7 @@ class OmnitickerController extends Controller
                     $doc['link_url'] = $doc['link'];
                 }
             } catch (Exception $e) {
-                // Array is it as expected
+                // No need to catch exception
             }
 
             $templatesService = $this->container->get('newscoop.templates.service');

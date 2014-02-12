@@ -1,8 +1,9 @@
 <?php
 /**
- * @package Newscoop
- * @copyright 2012 Sourcefabric o.p.s.
- * @license http://www.gnu.org/licenses/gpl-3.0.txt
+ * @package   Newscoop\SolrSearchPluginBundle
+ * @author    Mischa Gorinskat <mischa.gorinskat@sourcefabric.org>
+ * @copyright 2014 Sourcefabric o.p.s.
+ * @license   http://www.gnu.org/licenses/gpl-3.0.txt
  */
 
 namespace Newscoop\SolrSearchPluginBundle\Controller;
@@ -24,8 +25,6 @@ class TopicController extends Controller
     protected $sources = array(
         'news', 'newswire', 'blog',
     );
-
-    // TODO: Fix methods to match current parameters
 
     /**
      * @Route("/themen/{theme_name}/", name="topic")
@@ -52,8 +51,7 @@ class TopicController extends Controller
                 'name' => $theme_name,
             ));
         } catch (Exception $e) {
-            // Return to empty page
-            die('Go to error page.');
+            throw new NewscoopException();
         }
 
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
