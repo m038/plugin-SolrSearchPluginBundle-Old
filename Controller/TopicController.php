@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Doctrine\ORM\Query\ResultSetMapping;
+use Exception;
 
 class TopicController extends Controller
 {
@@ -27,8 +28,8 @@ class TopicController extends Controller
     // TODO: Fix methods to match current parameters
 
     /**
-     * @Route("/themen/{theme_name}/")
-     * @Route("/{language}/themen/{theme_name}/")
+     * @Route("/themen/{theme_name}/", name="topic")
+     * @Route("/{language}/themen/{theme_name}/", name="topic_lang")
      */
     public function topicAction(Request $request, $theme_name, $language = null)
     {
@@ -46,27 +47,20 @@ class TopicController extends Controller
             }
         }
 
-        // find Topic
-        // $query = $em->createNativeQuery('
-        //     SELECT NrArticle
-        //     FROM xDossier
-        //     WHERE FShort_Name = ?
-        // ', new ResultSetMapping());
-        // $query->setParameter(1, $theme_name);
-        // $article = $query->getResult();
-
-        // echo '$articleNr: '.$articleNr.'<br>'; exit;
-
-        $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
-            'name' => $theme_name,
-        ));
-
-        // echo '<pre>$topic:'; var_dump($topic); echo '<hr>'; exit;
-
-        // $topicArticle = '';
+        try {
+            $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
+                'name' => $theme_name,
+            ));
+        } catch (Exception $e) {
+            // Return to empty page
+            die('Go to error page.');
+        }
 
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         $parameters = $request->query->all();
+        if (!array_key_exists('topic', $parameters)) {
+            $parameters['topic'] = $theme_name;
+        }
 
         $solrParameters = $this->encodeParameters($parameters);
         $solrParameters['core-language'] = $language->getRFC3066bis();
@@ -75,7 +69,7 @@ class TopicController extends Controller
 
         if (!array_key_exists('format', $parameters)) {
 
-            $topicData = array(
+            $topicData = (object) array(
                 'id' => $topic->getTopicId(),
                 'name' => $topic->getName(),
             );
@@ -156,7 +150,7 @@ class TopicController extends Controller
     private function buildSolrTopicParam(array $parameters)
     {
         if (array_key_exists('topic', $parameters)) {
-            return sprintf('topic:(%s)', json_encode(trim($this->_getParam('topic'), '"')));
+            return sprintf('topic:(%s)', trim($parameters['topic']));
         }
         return;
     }
