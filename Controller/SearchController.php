@@ -19,8 +19,8 @@ use Newscoop\NewscoopException;
 class SearchController extends Controller
 {
     /**
-     * @Route("/search/")
-     * @Route("/{language}/search/")
+     * @Route("/search/", name="search")
+     * @Route("/{language}/search/", name="search_lang")
      */
     public function searchAction(Request $request, $language = null)
     {

@@ -29,8 +29,8 @@ class OmnitickerController extends Controller
     );
 
     /**
-     * @Route("/omniticker/")
-     * @Route("/{language}/omniticker/")
+     * @Route("/omniticker/", name="omniticker")
+     * @Route("/{language}/omniticker/", name="omniticker_lang")
      */
     public function omnitickerAction(Request $request, $language = null)
     {

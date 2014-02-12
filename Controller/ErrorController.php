@@ -15,10 +15,12 @@ use Symfony\Component\HttpFoundation\Response;
 class ErrorController extends Controller
 {
     /**
-     * @Route("/search/error")
-     * @Route("/{language}/search/error")
-     * @Route("/omniticker/error")
-     * @Route("/{language}/omniticker/error")
+     * @Route("/search/error", name="search_error")
+     * @Route("/{language}/search/error", name="search_error_lang")
+     * @Route("/omniticker/error", name="omniticker_error")
+     * @Route("/{language}/omniticker/error", name="omniticker_error_lang")
+     * @Route("/themen/error", name="topic_error")
+     * @Route("/{language}/themen/error", name="topic_error_lang")
      */
     public function errorAction(Request $request, $language = null)
     {
