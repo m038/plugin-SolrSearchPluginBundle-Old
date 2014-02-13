@@ -27,10 +27,10 @@ class TopicController extends Controller
     );
 
     /**
-     * @Route("/themen/{theme_name}/", name="topic")
-     * @Route("/{language}/themen/{theme_name}/", name="topic_lang")
+     * @Route("/themen/{themen}", name="tages_woche_extra_single_themen", requirements={"themen" = ".+"})
+     * @Route("/{language}/themen/{themen}/", name="tages_woche_extra_single_themen_language", requirements={"themen" = ".+"})
      */
-    public function topicAction(Request $request, $theme_name, $language = null)
+    public function topicAction(Request $request, $themen, $language = null)
     {
         $em = $this->container->get('em');
 
@@ -48,7 +48,7 @@ class TopicController extends Controller
 
         try {
             $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
-                'name' => $theme_name,
+                'name' => $themen,
             ));
             if ($topic === null) {
                 return $this->redirect($this->generateUrl('topic_error'));
@@ -60,7 +60,7 @@ class TopicController extends Controller
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
         $parameters = $request->query->all();
         if (!array_key_exists('topic', $parameters)) {
-            $parameters['topic'] = $theme_name;
+            $parameters['topic'] = $themen;
         }
 
         $solrParameters = $this->encodeParameters($parameters);
