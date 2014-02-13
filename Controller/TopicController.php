@@ -40,7 +40,7 @@ class TopicController extends Controller
         if ($language === null) {
             $language = $this->container->get('em')
                 ->getRepository('Newscoop\Entity\Language')
-                ->findByRFC3066bis('en-US', true);
+                ->findByRFC3066bis('de-DE', true);
             if ($language == null) {
                 throw new NewscoopException('Could not find default language.');
             }
@@ -50,8 +50,11 @@ class TopicController extends Controller
             $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
                 'name' => $theme_name,
             ));
+            if ($topic === null) {
+                return $this->redirect($this->generateUrl('topic_error'));
+            }
         } catch (Exception $e) {
-            throw new NewscoopException();
+            throw new NewscoopException("Could not find topic.");
         }
 
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');

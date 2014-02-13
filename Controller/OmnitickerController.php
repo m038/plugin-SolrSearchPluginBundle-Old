@@ -49,7 +49,7 @@ class OmnitickerController extends Controller
         if ($language === null) {
             $language = $this->container->get('em')
                 ->getRepository('Newscoop\Entity\Language')
-                ->findByRFC3066bis('en-US', true);
+                ->findByRFC3066bis('de-DE', true);
             if ($language == null) {
                 throw new NewscoopException('Could not find default language.');
             }
