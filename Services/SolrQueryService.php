@@ -10,6 +10,7 @@ namespace Newscoop\SolrSearchPluginBundle\Services;
 
 use Doctrine\ORM\EntityManager;
 use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Guzzle\Http\Client;
@@ -85,10 +86,15 @@ class SolrQueryService implements QueryInterface
         $this->container = $container;
         $this->em = $this->container->get('em');
         $this->router = $this->container->get('router');
-        $this->request = $this->container->get('request');
+
+        if ($this->container->isScopeActive('request')) {
+            $this->request = $this->container->get('request');
+        } else {
+            $this->request = new Request();
+        }
 
         try {
-            $this->config = $this->container->getParameter('SolrSearchPluginBundle');
+            $this->config = $this->container->getParameter('solrsearchpluginbundle');
         } catch(Exception $e) {
             return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
         }
@@ -177,8 +183,8 @@ class SolrQueryService implements QueryInterface
             $core = $filter['core-language'];
             unset($filter['core-language']);
         } else {
-            $defaultCore = $this->container->getParameter('SolrSearchPluginBundle.default_core');
-            if ($defaultCore === null) {
+            $core = $this->getConfig('default_core');
+            if ($core === null) {
                 throw new SolrException($translator->trans('plugin.error.solrcore'));
             }
         }
