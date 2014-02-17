@@ -27,10 +27,11 @@ class TopicController extends Controller
     );
 
     /**
-     * @Route("/themen/{theme_name}/", name="topic")
-     * @Route("/{language}/themen/{theme_name}/", name="topic_lang")
+     * @Route("/topic/", name="topic")
+     * @Route("/topic/{theme_name}/", name="topic_name")
+     * @Route("/{language}/topic/{theme_name}/", name="topic_name_lang")
      */
-    public function topicAction(Request $request, $theme_name, $language = null)
+    public function topicAction(Request $request, $theme_name = null, $language = null)
     {
         $em = $this->container->get('em');
 
@@ -46,15 +47,28 @@ class TopicController extends Controller
             }
         }
 
+        if ($theme_name === null) {
+            $templatesService = $this->container->get('newscoop.templates.service');
+            $response = new Response();
+            $response->setContent($templatesService->fetchTemplate("_views/topic_empty.tpl"));
+            return $response;
+        }
+
         try {
             $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
                 'name' => $theme_name,
             ));
             if ($topic === null) {
-                return $this->redirect($this->generateUrl('topic_error'));
+                $templatesService = $this->container->get('newscoop.templates.service');
+                $response = new Response();
+                $response->setContent($templatesService->fetchTemplate("_views/topic_notfound.tpl"));
+                return $response;
             }
         } catch (Exception $e) {
-            throw new NewscoopException("Could not find topic.");
+            $templatesService = $this->container->get('newscoop.templates.service');
+            $response = new Response();
+            $response->setContent($templatesService->fetchTemplate("_views/topic_notfound.tpl"));
+            return $response;
         }
 
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
