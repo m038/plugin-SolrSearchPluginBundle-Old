@@ -21,7 +21,6 @@ class SearchController extends Controller
 {
     /**
      * @Route("/search/", name="search")
-     * @Route("/{language}/search/", name="search_lang")
      */
     public function searchAction(Request $request, $language = null)
     {
