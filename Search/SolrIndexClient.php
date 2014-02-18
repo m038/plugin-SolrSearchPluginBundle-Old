@@ -96,7 +96,7 @@ class SolrIndexClient implements IndexClientInterface
         $this->container = $container;
 
         try {
-            $this->config = $container->getParameter('SolrSearchPluginBundle');
+            $this->config = $container->getParameter('solrsearchpluginbundle');
         } catch(Exception $e) {
             return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
         }
