@@ -298,7 +298,7 @@ class SolrIndexClient implements IndexClientInterface
             if (in_array($core, $this->cores)) {
                 return $core;
             } else {
-                throw SolrException($this->container->
+                throw new SolrException($this->container->
                     get('translator')->trans('plugin.error.solr_core_item'));
             }
         } else {
