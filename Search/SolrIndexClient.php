@@ -334,10 +334,10 @@ class SolrIndexClient implements IndexClientInterface
 
         $commands = array();
         foreach ($this->delete[$core] AS $id) {
-            $commands = sprintf('"delete":%s', json_encode(array('id' => $id)));
+            $commands[] = array('id' => $id);
         }
 
-        return array(json_encode($commands));
+        return array(sprintf('"delete":%s', json_encode($commands)));
     }
 
     /**
