@@ -34,10 +34,12 @@ class OmnitickerController extends Controller
      */
     public function omnitickerAction(Request $request, $language = null)
     {
-        if ($this->container->get('webcode')->findArticleByWebcode($request->query->get('q')) !== null) {
+        $searchParam = trim($request->query->get('q'));
+
+        if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
 
             return $this->redirect(
-                sprintf('/%s', $request->get('q')), 302
+                sprintf('/%s', $searchParam), 302
             );
         }
 

@@ -24,10 +24,12 @@ class SearchController extends Controller
      */
     public function searchAction(Request $request, $language = null)
     {
-        if ($this->container->get('webcode')->findArticleByWebcode($request->query->get('q')) !== null) {
+        $searchParam = trim($request->query->get('q'));
+
+        if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
 
             return $this->redirect(
-                sprintf('/%s', $request->get('q')), 302
+                sprintf('/%s', $searchParam), 302
             );
         }
 
@@ -111,13 +113,9 @@ class SearchController extends Controller
     {
         $q = (array_key_exists('q', $parameters)) ? trim($parameters['q']) : sha1(__FILE__); // search for nonsense to show empty search result page
 
-        if ($this->container->get('webcode')->findArticleByWebcode($q) !== null) {
-            return sprintf('webcode:\%s', $q);
-        }
-
         $matches = array();
         if (preg_match('/^(author|topic):([^"]+)$/', $q, $matches)) {
-            $q = sprintf('%s:"%s"', $matches[1], json_encode($matches[2]));
+            $q = sprintf('%s:%s', $matches[1], json_encode(trim($matches[2], '"')));
         }
 
         return $q;
