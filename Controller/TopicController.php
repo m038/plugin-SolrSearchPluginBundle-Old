@@ -165,7 +165,7 @@ class TopicController extends Controller
     private function buildSolrTopicParam(array $parameters)
     {
         if (array_key_exists('topic', $parameters)) {
-            return sprintf('topic:(%s)', trim($parameters['topic']));
+            return sprintf('topic:(%s)', json_encode(trim($parameters['topic'], '"')));
         }
         return;
     }
