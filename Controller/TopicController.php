@@ -54,9 +54,11 @@ class TopicController extends Controller
             return $response;
         }
 
+        $theme_name = urldecode($theme_name);
+
         try {
             $topic = $em->getRepository('Newscoop\Entity\Topic')->findOneBy(array(
-                'name' => urldecode($theme_name),
+                'name' => $theme_name,
             ));
             if ($topic === null) {
                 $templatesService = $this->container->get('newscoop.templates.service');
