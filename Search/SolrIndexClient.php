@@ -117,6 +117,7 @@ class SolrIndexClient implements IndexClientInterface
     public function add(array $doc)
     {
         $cores = $this->getCoreFromItem();
+
         if (is_array($cores)) {
             foreach ($cores AS $core) {
                 $this->add[$core][] = $doc;
@@ -271,6 +272,7 @@ class SolrIndexClient implements IndexClientInterface
         // Extract core names from response
         $xml = new SimpleXMLElement($body);
         $names = $xml->xpath('//str[@name="name"]');
+
         $cores = array();
 
         if (count($names) === 0) {
@@ -333,11 +335,18 @@ class SolrIndexClient implements IndexClientInterface
         }
 
         $commands = array();
-        foreach ($this->delete[$core] AS $id) {
-            $commands[] = array('id' => $id);
+        foreach ($this->delete[$core] as $id) {
+            $commands[] = sprintf('"delete":%s', json_encode(array('id' => $id)));
         }
 
-        return array(sprintf('"delete":%s', json_encode($commands)));
+        // $commands = array();
+        // foreach ($this->delete[$core] AS $id) {
+        //     $commands[] = array('id' => $id);
+        // }
+
+        // return array(sprintf('"delete":%s', json_encode($commands)));
+
+        return $commands;
     }
 
     /**
