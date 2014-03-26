@@ -6,7 +6,7 @@
  * @license   http://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-namespace Newscoop\OmnitickerPluginBundle\Controller;
+namespace Newscoop\SolrSearchPluginBundle\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
