@@ -36,13 +36,6 @@ class OmnitickerController extends Controller
     {
         $searchParam = trim($request->query->get('q'));
 
-        if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
-
-            return $this->redirect(
-                sprintf('/%s', $searchParam), 302
-            );
-        }
-
         $language = $this->container->get('em')
             ->getRepository('Newscoop\Entity\Language')
             ->findOneByCode($language);
