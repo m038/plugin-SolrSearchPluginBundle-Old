@@ -70,7 +70,7 @@ class OmnitickerController extends Controller
                 foreach ($solrResponseBody['response']['docs'] AS &$doc) {
                     $doc['link_url'] = $doc['link'];
                 }
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 // No need to catch exception
             }
 
