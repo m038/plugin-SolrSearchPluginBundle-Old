@@ -66,14 +66,6 @@ class OmnitickerController extends Controller
             $response->setContent($templatesService->fetchTemplate("_views/omniticker_index.tpl"));
         } elseif ($parameters['format'] === 'xml') {
 
-            try {
-                foreach ($solrResponseBody['response']['docs'] AS &$doc) {
-                    $doc['link_url'] = $doc['link'];
-                }
-            } catch (\Exception $e) {
-                // No need to catch exception
-            }
-
             $templatesService = $this->container->get('newscoop.templates.service');
             $smarty = $templatesService->getSmarty();
             $smarty->assign('result', $solrResponseBody);
