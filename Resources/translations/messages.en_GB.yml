@@ -1,0 +1,10 @@
+Plugins: Plugins
+plugin:
+    name: SolrSearchPluginBundle
+    error:
+        config: 'Could not read or find proper configuration. Check the readme of this plugin.'
+        curl: 'Could not make a connection to the Solr server. Check your configuration.'
+        solr_core: 'Could not determine Solr core. Check your configuration.'
+        solr_core_read: 'Unable to retrieve core names from Solr.'
+        solr_core_item: 'Returned core value for item is not a valid Solr core.'
+        response_false: 'Unsuccessful response.'
