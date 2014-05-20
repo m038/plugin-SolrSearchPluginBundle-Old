@@ -50,6 +50,7 @@ class TopicController extends Controller
         if ($theme_name === null) {
             $templatesService = $this->container->get('newscoop.templates.service');
             $response = new Response();
+            $response->headers->set('Content-Type', 'text/html');
             $response->setContent($templatesService->fetchTemplate("_views/topic_empty.tpl"));
             return $response;
         }
@@ -63,12 +64,14 @@ class TopicController extends Controller
             if ($topic === null) {
                 $templatesService = $this->container->get('newscoop.templates.service');
                 $response = new Response();
+                $response->headers->set('Content-Type', 'text/html');
                 $response->setContent($templatesService->fetchTemplate("_views/topic_notfound.tpl"));
                 return $response;
             }
         } catch (Exception $e) {
             $templatesService = $this->container->get('newscoop.templates.service');
             $response = new Response();
+            $response->headers->set('Content-Type', 'text/html');
             $response->setContent($templatesService->fetchTemplate("_views/topic_notfound.tpl"));
             return $response;
         }
@@ -97,6 +100,7 @@ class TopicController extends Controller
             $smarty->assign('topic', $topicData);
 
             $response = new Response();
+            $response->headers->set('Content-Type', 'text/html');
             $response->setContent($templatesService->fetchTemplate("_views/topic_index.tpl"));
         } elseif ($parameters['format'] === 'xml') {
 

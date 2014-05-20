@@ -63,6 +63,7 @@ class OmnitickerController extends Controller
             $smarty->assign('result', json_encode($solrResponseBody));
 
             $response = new Response();
+            $response->headers->set('Content-Type', 'text/html');
             $response->setContent($templatesService->fetchTemplate("_views/omniticker_index.tpl"));
         } elseif ($parameters['format'] === 'xml') {
 

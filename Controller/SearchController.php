@@ -60,6 +60,7 @@ class SearchController extends Controller
             $smarty->assign('result', json_encode($solrResponseBody));
 
             $response = new Response();
+            $response->headers->set('Content-Type', 'text/html');
             $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
         } elseif ($parameters['format'] === 'json') {
 
