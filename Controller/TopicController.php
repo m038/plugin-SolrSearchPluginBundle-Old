@@ -87,12 +87,12 @@ class TopicController extends Controller
 
         $solrResponseBody = $queryService->find($solrParameters);
 
-        if (!array_key_exists('format', $parameters)) {
+        $topicData = (object) array(
+            'id' => $topic->getTopicId(),
+            'name' => $topic->getName(),
+        );
 
-            $topicData = (object) array(
-                'id' => $topic->getTopicId(),
-                'name' => $topic->getName(),
-            );
+        if (!array_key_exists('format', $parameters)) {
 
             $templatesService = $this->container->get('newscoop.templates.service');
             $smarty = $templatesService->getSmarty();
@@ -115,6 +115,7 @@ class TopicController extends Controller
             $templatesService = $this->container->get('newscoop.templates.service');
             $smarty = $templatesService->getSmarty();
             $smarty->assign('result', $solrResponseBody);
+            $smarty->assign('topic', $topicData);
 
             $response = new Response();
             $response->headers->set('Content-Type', 'application/rss+xml');
