@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Guzzle\Http\Client;
 use Guzzle\Http\QueryString;
 use Guzzle\Http\Exception\ServerErrorResponseException;
+use Guzzle\Http\Exception\ClientErrorResponseException;
 use Newscoop\Search\QueryInterface;
 use Newscoop\Entity\Topic;
 use Newscoop\SolrSearchPluginBundle\Search\SolrException;
@@ -192,22 +193,20 @@ class SolrQueryService implements QueryInterface
         $uri = $this->url . str_replace('{core}', $core, $this->query_uri);
         $uri .= '?'.http_build_query($filter);
 
-        // DEBUG
-        // $uri = str_replace('json', 'xml', $uri);
-        //echo '$uri: '.$uri.'<br>';// exit;
-
         $solrRequest = $client->get($uri);
 
         try {
             $solrResponse = $solrRequest->send();
         } catch(ServerErrorResponseException $e) {
-            return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
+            throw new SolrException($translator->trans('plugin.error.server_error'));
+        } catch(ClientErrorResponseException $e) {
+            throw new SolrException($translator->trans('plugin.error.response_false'));
         } catch (Exception $e) {
-            throw new SolrException($translator->trans('plugin.error.curl'));
+            throw new Exception($translator->trans('plugin.error.curl'));
         }
 
         if (!$solrResponse->isSuccessful()) {
-            return $this->redirect($this->generateUrl('newscoop_solrsearchplugin_error'));
+            throw new SolrException($translator->trans('plugin.error.response_false'));
         }
 
         return $this->decodeResponse($solrResponse->getBody(true));

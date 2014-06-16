@@ -23,11 +23,15 @@ class ErrorController extends Controller
     public function searchAction(Request $request, $language = null)
     {
         $templatesService = $this->container->get('newscoop.templates.service');
+        $smarty = $templatesService->getSmarty();
+        $smarty->assign('error', $request->query->get('error'));
 
-        return new Response(
-            $templatesService->fetchTemplate("_views/search_error.tpl"),
-            503
-        );
+        $response = new Response();
+        $response->headers->set('Content-Type', 'text/html');
+        $response->setStatusCode(503);
+        $response->setContent($templatesService->fetchTemplate("_views/search_error.tpl"));
+
+        return $response;
     }
 
     /**

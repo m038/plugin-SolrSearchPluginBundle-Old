@@ -24,6 +24,7 @@ class SearchController extends Controller
      */
     public function searchAction(Request $request, $language = null)
     {
+        $parameters = $request->query->all();
         $searchParam = trim($request->query->get('q'));
 
         if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
@@ -46,12 +47,27 @@ class SearchController extends Controller
             }
         }
 
-        $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
-        $parameters = $request->query->all();
+        if (isset($parameters['q']) && $parameters['q'] === '') {
 
-        $solrParameters = $this->encodeParameters($parameters);
-        $solrParameters['core-language'] = $language->getRFC3066bis();
-        $solrResponseBody = $queryService->find($solrParameters);
+            $solrResponseBody = array();
+        } else {
+
+            $solrParameters = $this->encodeParameters($parameters);
+            $solrParameters['core-language'] = $language->getRFC3066bis();
+            $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
+
+            try {
+                $solrResponseBody = $queryService->find($solrParameters);
+            } catch(\Exception $e) {
+                $request->query->set('error', $e->getMessage());
+
+                $response = $this->forward('NewscoopSolrSearchPluginBundle:Error:search', array(
+                    'request' => $request
+                ));
+
+                return $response;
+            }
+        }
 
         if (!array_key_exists('format', $parameters)) {
 
