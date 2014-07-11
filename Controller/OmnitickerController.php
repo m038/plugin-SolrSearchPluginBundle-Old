@@ -70,6 +70,8 @@ class OmnitickerController extends Controller
             $templatesService = $this->container->get('newscoop.templates.service');
             $smarty = $templatesService->getSmarty();
             $smarty->assign('result', $solrResponseBody);
+            $smarty->cache_lifetime = 180;
+            $smarty->campsiteVector['params'] = $request->getQueryString();
 
             $response = new Response();
             $response->headers->set('Content-Type', 'application/rss+xml');
