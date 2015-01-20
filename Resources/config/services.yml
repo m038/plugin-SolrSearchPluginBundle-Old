@@ -3,15 +3,61 @@ services:
         class: Newscoop\SolrSearchPluginBundle\EventListener\LifecycleSubscriber
         arguments:
             - @em
+            - @newscoop.plugins.service
+            - @translator
         tags:
             - { name: kernel.event_subscriber}
 
+    newscoop_solrsearch_plugin.configure_menu_listener:
+        class: Newscoop\SolrSearchPluginBundle\EventListener\ConfigureMenuListener
+        tags:
+          - { name: kernel.event_listener, event: newscoop_newscoop.menu_configure, method: onMenuConfigure }
+        arguments:
+            - @translator
+            - @user
+
+    newscoop_solrsearch_plugin.permissions.listener:
+        class: Newscoop\SolrSearchPluginBundle\EventListener\PermissionsListener
+        arguments:
+            - @translator
+        tags:
+          - { name: kernel.event_listener, event: newscoop.plugins.permissions.register, method: registerPermissions }
+
+    newscoop_solrsearch_plugin.list_objects.listener:
+        class: Newscoop\SolrSearchPluginBundle\EventListener\ListObjectsListener
+        tags:
+          - { name: kernel.event_listener, event: newscoop.listobjects.register, method: registerObjects }
+
     index_client.solr:
-        class: "Newscoop\SolrSearchPluginBundle\Search\SolrIndexClient"
+        class: "Newscoop\SolrSearchPluginBundle\Services\SolrIndexClient"
         arguments:
             - @service_container
 
     newscoop_solrsearch_plugin.query_service:
         class: Newscoop\SolrSearchPluginBundle\Services\SolrQueryService
         arguments:
+            - @newscoop_solrsearch_plugin.helper
+            - @translator
+
+    newscoop_solrsearch_plugin.helper:
+        class: "Newscoop\SolrSearchPluginBundle\Services\SolrHelperService"
+        arguments:
             - @service_container
+
+
+    # ahs_adverts_plugin.lifecyclesubscriber:
+    #     class: AHS\AdvertsPluginBundle\EventListener\LifecycleSubscriber
+    #     arguments:
+    #         - @em
+    #         - @newscoop.plugins.service
+    #         - @translator
+    #         - @newscoop.scheduler
+    #         - @system_preferences_service
+    #         - %ahs_image%
+    #     tags:
+    #         - { name: kernel.event_subscriber}
+
+    # ahs_adverts_plugin.list_objects.listener:
+    #     class: AHS\AdvertsPluginBundle\EventListener\ListObjectsListener
+    #     tags:
+    #       - { name: kernel.event_listener, event: newscoop.listobjects.register, method: registerObjects }

@@ -1,0 +1,22 @@
+{% extends 'NewscoopSolrSearchPluginBundle:Admin:_boilerplate.html.twig' %}
+
+{% use 'NewscoopSolrSearchPluginBundle:Form:solrConfigurationType.html.twig' %}
+
+{% block admin_title %}{{ 'plugin.solr.pagetitle'|trans }} - {{ 'plugin.solr.menu.settings'|trans }}{% endblock %}
+{% block admin_page_title_content %}{{ 'plugin.solr.solr'|trans }} {{ 'plugin.solr.menu.settings'|trans }}{% endblock %}
+
+{% block admin_content %}
+    {% set menuActive = 'settings' %}
+    {{ parent() }}
+{% endblock %}
+
+{% block plugin_content %}
+
+{# Do not remove wrapper div #}
+<div class="form_wrapper row">
+    <div class="col-xs-12 col-md-6 col-md-offset-2">
+        {{ block('solr_configuration_type') }}
+    </div>
+</div>
+
+{% endblock %}

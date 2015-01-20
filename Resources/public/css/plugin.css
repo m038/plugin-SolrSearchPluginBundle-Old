@@ -1,0 +1,23 @@
+.tab-content {
+    border: 1px solid #DDDDDD;
+    border-top: none;
+    padding: 1em;
+    background: white;
+}
+
+.actionbar {
+    text-align: right;
+}
+
+.pagination-wrapper {
+    text-align: center;
+}
+
+.help-block {
+    margin: 5px  0 0 0;
+}
+
+#rawBody {
+    max-height: 350px;
+    margin: 1em 0 0 0;
+}

@@ -6,17 +6,16 @@
  * @license   http://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-namespace Newscoop\SolrSearchPluginBundle\Search;
+namespace Newscoop\SolrSearchPluginBundle\Services;
 
 use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\Translation\Translator;
+use Buzz\Exception\RequestException;
+use Newscoop\SolrSearchPluginBundle\Exception\SolrException;
+use Newscoop\SolrSearchPluginBundle\Services\SolrHelperService;
 use Newscoop\Search\IndexClientInterface;
 use Newscoop\Search\ServiceInterface;
 use Newscoop\Search\DocumentInterface;
-use Newscoop\Search\QueryInterface;
-use Newscoop\Http\Client;
-use Guzzle\Http\Message\Response;
-use SimpleXMLElement;
-use Newscoop\SolrSearchPluginBundle\Search\SolrException;
 
 /**
  * Index
@@ -24,6 +23,16 @@ use Newscoop\SolrSearchPluginBundle\Search\SolrException;
 class SolrIndexClient implements IndexClientInterface
 {
     const APPLICATION_JSON = 'application/json';
+
+    /**
+     * @var Newscoop\SolrSearchPluginBundle\Service\SolrHelperService
+     */
+    private $helper;
+
+    /**
+     * @var Symfony\Component\Translation\Translator
+     */
+    private $translator;
 
     /**
      * Indexable item
@@ -40,19 +49,12 @@ class SolrIndexClient implements IndexClientInterface
     private $service;
 
     /**
-     * Symfony container
-     *
-     * @var Symfony\Component\DependencyInjection\Container
-     */
-    private $container;
-
-    /**
      * @var array
      */
     private $cores;
 
     /**
-     * @var Newscoop\Http\Client
+     * @var Buzz\Browser
      */
     private $client;
 
@@ -66,45 +68,14 @@ class SolrIndexClient implements IndexClientInterface
      */
     private $delete = array();
 
-    /**
-     * Configuration data
-     *
-     * @var array
-     */
-    private $config = array();
-
-    /**
-     * Solr location
-     *
-     * @var string
-     */
-    private $url;
-
-    /**
-     * Solr query uri
-     *
-     * @var string
-     */
-    private $query_uri;
-
-    /**
-     * @param Symfony\Component\DependencyInjection\Container $container
-     */
     public function __construct(Container $container)
     {
-        $this->client = new Client();
-        $this->container = $container;
+        $this->helper = $container->get('newscoop_solrsearch_plugin.helper');
+        $this->translator = $container->get('translator');
 
-        try {
-            $this->config = $container->getParameter('solrsearchpluginbundle');
-        } catch(Exception $e) {
-            return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
-        }
+        $this->cores = $this->helper->getCoresFromSolr();
+        $this->client = $this->helper->initClient();
 
-        $this->url = $this->getConfig('url');
-        $this->update_uri = $this->getConfig('update_uri');
-
-        $this->cores = $this->getCoresFromSolr();
         $this->initCommands();
     }
 
@@ -167,22 +138,22 @@ class SolrIndexClient implements IndexClientInterface
      */
     public function deleteAll()
     {
-        $translator = $this->container->get('translator');
-
         foreach ($this->cores as $core) {
 
-            $uri = $this->url . str_replace('{core}', $core, $this->update_uri);
-            $request = $this->client->post($uri);
-            $request->setBody('{"delete": { "query":"*:*" }}', self::APPLICATION_JSON);
+            $url = $this->helper->getUpdateUrl($core);
 
             try {
-                $response = $request->send();
-            } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
-                throw new SolrException($translator->trans('plugin.error.curl') .' ('. $e->getMessage() .')');
+                $response = $this->client->post(
+                    $url,
+                    array('Content-Type: '.self::APPLICATION_JSON),
+                    '{"delete": { "query":"*:*" }}'
+                );
+            } catch(RequestException $e) {
+                throw new SolrException($this->translator->trans('plugin.error.curl') .' ('. $e->getMessage() .')');
             }
 
             if (!$response->isSuccessful()) {
-                throw new SolrException($translator->trans('plugin.error.response_false'));
+                throw new SolrException($this->translator->trans('plugin.error.response_false'));
             }
         }
 
@@ -199,24 +170,25 @@ class SolrIndexClient implements IndexClientInterface
         foreach ($this->cores as $core) {
 
             $commands = array_merge($this->buildAddCommands($core), $this->buildDeleteCommands($core));
+
             if (empty($commands)) {
                 continue;
             }
 
-            $uri = $this->url . str_replace('{core}', $core, $this->update_uri);
-            $request = $this->client->post($uri);
-            $request->setBody('{'.implode(',', $commands).'}', self::APPLICATION_JSON);
+            $url = $this->helper->getUpdateUrl($core);
 
             try {
-                $response = $request->send();
-            } catch(\Guzzle\Http\Exception\ServerErrorResponseException $e) {
-                throw new SolrException($translator->
-                    trans('plugin.error.curl') .' - ('. $e->getMessage() .')');
+                $response = $this->client->post(
+                    $url,
+                    array('Content-Type: '.self::APPLICATION_JSON),
+                    '{'.implode(',', $commands).'}'
+                );
+            } catch(RequestException $e) {
+                throw new SolrException($this->translator->trans('plugin.error.curl') .' ('. $e->getMessage() .')');
             }
 
             if (!$response->isSuccessful()) {
-                throw new SolrException($translator->
-                    trans('plugin.error.response_false'));
+                throw new SolrException($this->translator->trans('plugin.error.response_false'));
             }
         }
 
@@ -225,15 +197,24 @@ class SolrIndexClient implements IndexClientInterface
         return true;
     }
 
-    private function getUpdateBody($core)
+    /**
+     * {@inheritdoc}
+     */
+    public function isEnabled($serviceName)
     {
-        $commands = array_map('strval', $this->commands[$core]);
-        return sprintf('{%s}', implode(',', $commands));
+        return in_array($serviceName, $this->helper->getConfigValue('indexables'));
     }
 
-    public function find(QueryInterface $query)
+    /**
+     * {@inheritdoc}
+     */
+    public function isTypeIndexable($serviceName, $subType)
     {
-
+        $subTypes = $this->helper->getConfigValue(str_replace('.', '_', $serviceName).'_types', true);
+        if (is_array($subTypes)) {
+            return in_array($subType, $this->helper->getConfigValue(str_replace('.', '_', $serviceName).'_types'));
+        }
+        return true;
     }
 
     /**
@@ -258,36 +239,6 @@ class SolrIndexClient implements IndexClientInterface
     }
 
     /**
-     * Gets all core names from Solr
-     *
-     * @return array List of core names
-     */
-    private function getCoresFromSolr()
-    {
-        // Get cores from solr
-        $request = $this->client->get($this->url . '/admin/cores?action=STATUS');
-        $response = $request->send();
-        $body = $response->getBody();
-
-        // Extract core names from response
-        $xml = new SimpleXMLElement($body);
-        $names = $xml->xpath('//str[@name="name"]');
-
-        $cores = array();
-
-        if (count($names) === 0) {
-            throw SolrException($this->container->get('translator')->
-                trans('plugin.error.solr_core_read'));
-        }
-
-        foreach ($names AS $name) {
-            $cores[] = (string) $name;
-        }
-
-        return $cores;
-    }
-
-    /**
      * Tries to get codename (language code) based on the item language if
      * not possible to identify language, falls back to all cores.
      *
@@ -300,8 +251,7 @@ class SolrIndexClient implements IndexClientInterface
             if (in_array($core, $this->cores)) {
                 return $core;
             } else {
-                throw new SolrException($this->container->
-                    get('translator')->trans('plugin.error.solr_core_item'));
+                throw new SolrException($this->translator->trans('plugin.error.solr_core_item'));
             }
         } else {
             // Return all cores
@@ -339,13 +289,6 @@ class SolrIndexClient implements IndexClientInterface
             $commands[] = sprintf('"delete":%s', json_encode(array('id' => $id)));
         }
 
-        // $commands = array();
-        // foreach ($this->delete[$core] AS $id) {
-        //     $commands[] = array('id' => $id);
-        // }
-
-        // return array(sprintf('"delete":%s', json_encode($commands)));
-
         return $commands;
     }
 
@@ -358,33 +301,5 @@ class SolrIndexClient implements IndexClientInterface
             $this->add[$core] = array();
             $this->delete[$core] = array();
         }
-    }
-
-    /**
-     * Throw exception by given response
-     *
-     * @param Guzzle\Http\Message\Response $response
-     * @return void
-     */
-    private function throwException(Response $response)
-    {
-        throw new \RuntimeException($response->getMessage(), $response->getStatusCode());
-    }
-
-    /**
-     * Returns configuration array or part of it.
-     *
-     * @param  string $key Key to get only specific part from configuration
-     *
-     * @return mixed      Returns array with configuration or null if config
-     *                    isn't initiated properly.
-     */
-    public function getConfig($key = null)
-    {
-        if (count($this->config) == 0) {
-            return null;
-        }
-
-        return ($key !==  null && array_key_exists($key, $this->config)) ? $this->config[$key] : $this->config;
     }
 }

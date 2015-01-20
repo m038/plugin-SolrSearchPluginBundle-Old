@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Newscoop\Http\Client;
 use Newscoop\NewscoopException;
+use Newscoop\SolrSearchPluginBundle\Services\SolrHelperService;
 
 class SearchController extends Controller
 {
@@ -24,63 +25,75 @@ class SearchController extends Controller
      */
     public function searchAction(Request $request, $language = null)
     {
-        $parameters = $request->query->all();
-        $searchParam = trim($request->query->get('q'));
+        $helper = $this->get('newscoop_solrsearch_plugin.helper');
 
-        if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
-
-            return $this->redirect(
-                sprintf('/%s', $searchParam), 302
-            );
-        }
-
-        $language = $this->container->get('em')
-            ->getRepository('Newscoop\Entity\Language')
-            ->findOneByCode($language);
-
-        if ($language === null) {
-            $language = $this->container->get('em')
-                ->getRepository('Newscoop\Entity\Language')
-                ->findByRFC3066bis('de-DE', true);
-            if ($language == null) {
-                throw new NewscoopException('Could not find default language.');
-            }
-        }
-
-        if (isset($parameters['q']) && $parameters['q'] === '') {
-
-            $solrResponseBody = array();
-        } else {
-
-            $solrParameters = $this->encodeParameters($parameters);
-            $solrParameters['core-language'] = $language->getRFC3066bis();
-            $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
-
-            try {
-                $solrResponseBody = $queryService->find($solrParameters);
-            } catch(\Exception $e) {
-                $request->query->set('error', $e->getMessage());
-
-                $response = $this->forward('NewscoopSolrSearchPluginBundle:Error:search', array(
-                    'request' => $request
-                ));
-
-                return $response;
-            }
-        }
-
-        if (!array_key_exists('format', $parameters)) {
+        if ($helper->getConfigValue('index_type') == SolrHelperService::INDEX_ONLY) {
 
             $templatesService = $this->container->get('newscoop.templates.service');
-            $smarty = $templatesService->getSmarty();
-            $smarty->assign('result', json_encode($solrResponseBody));
-
             $response = new Response();
             $response->headers->set('Content-Type', 'text/html');
-            $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
-        } elseif ($parameters['format'] === 'json') {
+            $response->setContent($templatesService->fetchTemplate('search_index.tpl'));
 
-            $response = new JsonResponse($solrResponseBody);
+        } else {
+
+            $parameters = $request->query->all();
+            $searchParam = trim($request->query->get('q'));
+
+            if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
+
+                return $this->redirect(
+                    sprintf('/%s', $searchParam), 302
+                );
+            }
+
+            $language = $this->container->get('em')
+                ->getRepository('Newscoop\Entity\Language')
+                ->findOneByCode($language);
+
+            if ($language === null) {
+                $language = $this->container->get('em')
+                    ->getRepository('Newscoop\Entity\Language')
+                    ->findByRFC3066bis('de-DE', true);
+                if ($language == null) {
+                    throw new NewscoopException('Could not find default language.');
+                }
+            }
+
+            if (isset($parameters['q']) && $parameters['q'] === '') {
+
+                $solrResponseBody = array();
+            } else {
+
+                $solrParameters = $this->encodeParameters($parameters);
+                $solrParameters['core-language'] = $language->getRFC3066bis();
+                $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
+
+                try {
+                    $solrResponseBody = $queryService->find($solrParameters);
+                } catch(\Exception $e) {
+                    $request->query->set('error', $e->getMessage());
+
+                    $response = $this->forward('NewscoopSolrSearchPluginBundle:Error:search', array(
+                        'request' => $request
+                    ));
+
+                    return $response;
+                }
+            }
+
+            if (!array_key_exists('format', $parameters)) {
+
+                $templatesService = $this->container->get('newscoop.templates.service');
+                $smarty = $templatesService->getSmarty();
+                $smarty->assign('result', json_encode($solrResponseBody));
+
+                $response = new Response();
+                $response->headers->set('Content-Type', 'text/html');
+                $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
+            } elseif ($parameters['format'] === 'json') {
+
+                $response = new JsonResponse($solrResponseBody);
+            }
         }
 
         return $response;

@@ -8,25 +8,20 @@
 
 namespace Newscoop\SolrSearchPluginBundle\Services;
 
-use Doctrine\ORM\EntityManager;
-use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Guzzle\Http\Client;
-use Guzzle\Http\QueryString;
-use Guzzle\Http\Exception\ServerErrorResponseException;
-use Guzzle\Http\Exception\ClientErrorResponseException;
-use Newscoop\Search\QueryInterface;
-use Newscoop\Entity\Topic;
-use Newscoop\SolrSearchPluginBundle\Search\SolrException;
+use Symfony\Component\Translation\Translator;
+use Newscoop\SolrSearchPluginBundle\Exception\SolrException;
+use Newscoop\SolrSearchPluginBundle\Search\SolrQuery;
+use Newscoop\SolrSearchPluginBundle\Services\SolrHelperService;
 use Exception;
 use DateTime;
 
 /**
  * Configuration service for article type
  */
-class SolrQueryService implements QueryInterface
+class SolrQueryService
 {
     const LIMIT = 12;
 
@@ -57,51 +52,30 @@ class SolrQueryService implements QueryInterface
     );
 
     /**
-     * Configuration data
-     *
-     * @var array
+     * @var Newscoop\SolrSearchPluginBundle\Services\SolrHelperService
      */
-    private $config = array();
+    private $helper;
 
     /**
-     * Solr location
-     *
-     * @var string
+     * @var Symfony\Component\Translation\Translator
      */
-    private $url;
+    private $translator;
 
     /**
-     * Solr query uri
-     *
-     * @var string
+     * @param SolrHelperService $helper
+     * @param Translator        $translator
      */
-    private $query_uri;
-
-    /**
-     * Initialize service data
-     *
-     * @param Symfony\Component\DependencyInjection\Container $container
-     */
-    public function __construct(Container $container)
+    public function __construct(SolrHelperService $helper, Translator $translator)
     {
-        $this->container = $container;
-        $this->em = $this->container->get('em');
-        $this->router = $this->container->get('router');
+        $this->helper = $helper;
+        $this->translator = $translator;
 
-        if ($this->container->isScopeActive('request')) {
-            $this->request = $this->container->get('request');
-        } else {
-            $this->request = new Request();
-        }
-
-        try {
-            $this->config = $this->container->getParameter('solrsearchpluginbundle');
-        } catch(Exception $e) {
-            return new SolrException($this->container->get('translator')->trans('plugin.error.config'));
-        }
-
-        $this->url = $this->getConfig('url');
-        $this->query_uri = $this->getConfig('query_uri');
+        // TODO: Check if we can use a request listener for this
+        // if ($this->container->isScopeActive('request')) {
+        //     $this->request = $this->container->get('request');
+        // } else {
+        //     $this->request = new Request();
+        // }
     }
 
     /**
@@ -137,13 +111,15 @@ class SolrQueryService implements QueryInterface
             $toDate === null ? '*' : $toDate->format('Y-m-d\TH:i:s\Z') . '/DAY');
     }
 
-    public function encodeParameters(array $parameters)
+    public function encodeParameters($query)
     {
-        return array(
-            'wt' => 'json',
-            'rows' => self::LIMIT,
-            'start' => max(0, (int) (array_key_exists('start', $parameters) ? $parameters['start'] : 0)),
-        );
+        return $query;
+
+        // return array(
+        //     'wt' => 'json',
+        //     'rows' => self::LIMIT,
+        //     'start' => max(0, (int) (array_key_exists('start', $parameters) ? $parameters['start'] : 0)),
+        // );
     }
 
     public function decodeParameters(array $parameters)
@@ -154,82 +130,50 @@ class SolrQueryService implements QueryInterface
     public function decodeResponse($response)
     {
         $decoded = json_decode($response, true);
-        $decoded['responseHeader']['params']['q'] = $this->request->get('q'); // this might be modified, keep users query
-        $decoded['responseHeader']['params']['date'] = $this->request->get('date');
-        $decoded['responseHeader']['params']['type'] = $this->request->get('type');
-        $decoded['responseHeader']['params']['source'] = $this->request->get('source');
-        $decoded['responseHeader']['params']['section'] = $this->request->get('section');
-        $decoded['responseHeader']['params']['sort'] = $this->request->get('sort');
-        $decoded['responseHeader']['params']['topic'] = array_filter(explode(',', $this->request->get('topic', '')));
 
-        $decoded['responseHeader']['params']['q_topic'] = null;
-        if ($this->request->get('q') !== '') {
+        if ($this->helper->getConfigValue('index_mode') == SolrHelperService::INDEX_AND_DATA) {
+            $decoded['responseHeader']['params']['q'] = $this->request->get('q'); // this might be modified, keep users query
+            $decoded['responseHeader']['params']['date'] = $this->request->get('date');
+            $decoded['responseHeader']['params']['type'] = $this->request->get('type');
+            $decoded['responseHeader']['params']['source'] = $this->request->get('source');
+            $decoded['responseHeader']['params']['section'] = $this->request->get('section');
+            $decoded['responseHeader']['params']['sort'] = $this->request->get('sort');
+            $decoded['responseHeader']['params']['topic'] = array_filter(explode(',', $this->request->get('topic', '')));
 
-            $topic = $this->em->getRepository('Newscoop\Entity\Topic')
-                ->findOneByName($this->request->get('q') . ':de');
-            if ($topic !== null) {
-                $decoded['responseHeader']['params']['q_topic'] = $topic->getName(); // TODO: check why was: getName(5)
+            $decoded['responseHeader']['params']['q_topic'] = null;
+            if ($this->request->get('q') !== '') {
+
+                $topic = $this->em->getRepository('Newscoop\Entity\Topic')
+                    ->findOneByName($this->request->get('q') . ':de');
+                if ($topic !== null) {
+                    $decoded['responseHeader']['params']['q_topic'] = $topic->getName(); // TODO: check why was: getName(5)
+                }
             }
         }
 
         return $decoded;
     }
 
-    public function find(array $filter = array())
+    public function find(SolrQuery $query)
     {
-        $translator = $this->container->get('translator');
-        $client = new Client();
+        $client = $this->helper->initClient();
 
-        if (array_key_exists('core-language', $filter)) {
-            $core = $filter['core-language'];
-            unset($filter['core-language']);
-        } else {
-            $core = $this->getConfig('default_core');
-            if ($core === null) {
-                throw new SolrException($translator->trans('plugin.error.solrcore'));
-            }
-        }
-
-        $uri = $this->url . str_replace('{core}', $core, $this->query_uri);
-        $uri .= '?'.http_build_query($filter);
-
-        $solrRequest = $client->get($uri);
+        $url = sprintf(
+            '%s?%s',
+            $this->helper->getQueryUrl($query->core),
+            http_build_query($this->encodeParameters($query))
+        );
 
         try {
-            $solrResponse = $solrRequest->send();
-        } catch(ServerErrorResponseException $e) {
-            throw new SolrException($translator->trans('plugin.error.server_error'));
-        } catch(ClientErrorResponseException $e) {
-            throw new SolrException($translator->trans('plugin.error.response_false'));
+            $solrResponse = $client->get($url);
         } catch (Exception $e) {
-            throw new Exception($translator->trans('plugin.error.curl'));
+            throw new Exception($this->translator->trans('plugin.error.curl'));
         }
 
         if (!$solrResponse->isSuccessful()) {
-            throw new SolrException($translator->trans('plugin.error.response_false'));
+            throw new SolrException($this->translator->trans('plugin.error.response_false'));
         }
 
-        return $this->decodeResponse($solrResponse->getBody(true));
-    }
-
-    /**
-     * Returns configuration array or part of it.
-     *
-     * @param  string $key Key to get only specific part from configuration
-     *
-     * @return mixed      Returns array with configuration or null if config
-     *                    isn't initiated properly.
-     */
-    public function getConfig($key = null)
-    {
-        if (count($this->config) == 0) {
-            return null;
-        }
-
-        if ($key !==  null && array_key_exists($key, $this->config)) {
-            return $this->config[$key];
-        } else {
-            return $this->config;
-        }
+        return $this->decodeResponse($solrResponse->getContent());
     }
 }

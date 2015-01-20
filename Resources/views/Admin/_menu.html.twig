@@ -1,0 +1,20 @@
+<a href="https://github.com/newscoop/plugin-SolrSearchPluginBundle/blob/master/README.md" target="_blank" class="btn btn-sm btn-info pull-right">
+    {{ 'plugin.solr.admin.tabs.readme'|trans }}
+    <span class="glyphicon glyphicon-new-window"></span>
+</a>
+<ul class="nav nav-tabs">
+    {% if hasPermission('plugin_solr_status') %}
+        <li class="{% if menuActive == 'status' %}active{% endif %}">
+            <a href="{{ path('newscoop_solrsearchplugin_admin_status') }}">
+                {{ 'plugin.solr.admin.tabs.status'|trans }}
+            </a>
+        </li>
+    {% endif %}
+    {% if hasPermission('plugin_solr_settings') %}
+        <li class="{% if menuActive == 'settings' %}active{% endif %}">
+            <a href="{{ path('newscoop_solrsearchplugin_admin_settings') }}">
+                {{ 'plugin.solr.admin.tabs.settings'|trans }}
+            </a>
+        </li>
+    {% endif %}
+</ul>

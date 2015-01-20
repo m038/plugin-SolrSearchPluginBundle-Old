@@ -1,0 +1,53 @@
+{% block solr_configuration_type %}
+
+{% form_theme form 'NewscoopSolrSearchPluginBundle:Form:_bootstrap_3_horizontal_layout.html.twig' %}
+
+
+{{ form_start(form, { 'attr': { 'class': 'form_solr_configuration'} }) }}
+
+    {% set submitButton = form_widget(form.save, {'attr' : {'class' : 'btn btn-primary'} }) %}
+
+    {# {{ form_errors(form) }} #}
+
+    {{ form_row(form.enabled) }}
+
+    {% if form.index_type is defined %}
+        {{ form_row(form.index_type) }}
+    {% endif %}
+    {% if form.host is defined %}
+        {{ form_row(form.host) }}
+    {% endif %}
+    {% if form.port is defined %}
+        {{ form_row(form.port) }}
+    {% endif %}
+    {% if form.default_core is defined %}
+        {{ form_row(form.default_core) }}
+    {% endif %}
+    {% if form.query_uri is defined %}
+        {{ form_row(form.query_uri) }}
+    {% endif %}
+    {% if form.update_uri is defined %}
+        {{ form_row(form.update_uri) }}
+    {% endif %}
+    {% if form.indexables is defined %}
+        {{ form_row(form.indexables) }}
+    {% endif %}
+    {% if form.article_types is defined %}
+        {{ form_row(form.article_types) }}
+    {% endif %}
+    {% if form.cron_interval is defined %}
+        {{ form_row(form.cron_interval) }}
+    {% endif %}
+    {% if form.cron_custom is defined %}
+        {{ form_row(form.cron_custom) }}
+    {% endif %}
+
+    {{ form_rest(form) }}
+
+    <div class="col-sm-offset-2">
+        {{ submitButton|raw }}
+    </div>
+
+{{ form_end(form) }}
+
+{% endblock solr_configuration_type %}
