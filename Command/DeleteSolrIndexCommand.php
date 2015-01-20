@@ -17,7 +17,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Index clear command
  */
-class ClearSolrIndexCommand extends ContainerAwareCommand
+class DeleteSolrIndexCommand extends ContainerAwareCommand
 {
     /**
      * @see Console\Command\Command
@@ -25,8 +25,8 @@ class ClearSolrIndexCommand extends ContainerAwareCommand
     protected function configure()
     {
         $this
-        ->setName('index:clearsolr')
-        ->setDescription('Clear solr index.')
+        ->setName('index:deletesolr')
+        ->setDescription('Delete all items from Solr.')
         ->setHelp("");
     }
 
@@ -38,8 +38,8 @@ class ClearSolrIndexCommand extends ContainerAwareCommand
         $container = $this->getApplication()->getKernel()->getContainer();
         $solrIndexClient = $container->get('index_client.solr');
 
-        $output->writeln('Clearing solr indexes.');
+        $output->writeln('Deleting items from Solr.');
         $solrIndexClient->deleteAll();
-        $output->writeln('Search index cleared.');
+        $output->writeln('Deleting done. (For re-indexing also clear the index on the items with the command: php application/console index:clear)');
     }
 }
