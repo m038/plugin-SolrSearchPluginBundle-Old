@@ -71,7 +71,6 @@ class AdminController extends Controller
         $helper = $this->get('newscoop_solrsearch_plugin.helper');
 
         $indexables = $helper->getIndexables();
-        $indexables = array_keys($indexables);
         $indexables = array_combine($indexables, $indexables);
         array_walk($indexables, function(&$value) use ($translator) {
             $value = $translator->trans(sprintf('plugin.solr.admin.form.label.indexable_item.%s', str_replace('.', '_', $value)));

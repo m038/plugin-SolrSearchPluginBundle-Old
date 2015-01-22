@@ -116,7 +116,7 @@ class SolrHelperService
      *
      * @return array List of services
      */
-    public function getIndexables()
+    public function getIndexables($initService = false)
     {
         $servicIds = $this->container->getServiceIds();
         $indexingServices = array();
@@ -127,8 +127,13 @@ class SolrHelperService
                 continue;
             }
 
-            $indexer = $this->container->get($serviceId);
-            $indexingServices[$serviceId] = $indexer;
+            if ($initService) {
+                $indexer = $this->container->get($serviceId);
+                $indexingServices[$serviceId] = $indexer;
+            } else {
+                $indexingServices[] = $serviceId;
+            }
+
         }
 
         return $indexingServices;
