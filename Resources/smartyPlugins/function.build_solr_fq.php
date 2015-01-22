@@ -47,19 +47,35 @@ function smarty_function_build_solr_fq($p_params = array(), &$p_smarty)
                 $published = '[NOW-1DAY/HOUR TO *]';
                 break;
             case '7d':
-                $published = '[NOW-7DAY/DAY TO *]';
+                $published = '[NOW-7DAYS/DAY TO *]';
+                break;
+            case '14d':
+                $published = '[NOW-14DAYS/DAY TO *]';
+                break;
+            case '1m':
+                $published = '[NOW-1MONTH/DAY TO *]';
                 break;
             case '1y':
                 $published = '[NOW-1YEAR/DAY TO *]';
                 break;
-            default:
+            case '*':
                 $published = '';
+                break;
+            default:
+                if ($cleanParam['published'] == '') {
+                    $published = '';
+                } else {
+                    $published = $cleanParam['published'];
+                }
                 break;
         }
     }
 
     if (array_key_exists('type', $cleanParam) && !empty($cleanParam['type'])) {
-        $solrFq .= 'type:'.$cleanParam['type'];
+        if (!is_array($cleanParam['type'])) {
+            $cleanParam['type'] = array(trim($cleanParam['type'], '()'));
+        }
+        $solrFq .= sprintf('type:(%s)', implode(' OR ', $cleanParam['type']));
     }
 
     if (array_key_exists('from', $cleanParam) && !empty($cleanParam['from'])) {
