@@ -25,8 +25,8 @@ class ListObjectsListener
             'url_id' => 'cnt',
         ));
 
-        // $event->registerObjectTypes('content', array(
-        //     'class' => '\Newscoop\ExamplePluginBundle\Entity\Example'
-        // ));
+        $event->registerObjectTypes('solr_result', array(
+            'class' => '\Newscoop\SolrSearchPluginBundle\TemplateList\SolrResult'
+        ));
     }
 }

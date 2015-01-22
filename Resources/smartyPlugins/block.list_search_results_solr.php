@@ -54,22 +54,16 @@ function smarty_block_list_search_results_solr($params, $content, $smarty, &$rep
         }
 
         $context->setCurrentList($list, array(
-            'publication',
-            'language',
-            'issue',
-            'section',
-            'article',
-            'image',
-            'attachment',
-            'comment',
-            'subtitle',
+            'solr_result',
+            'pagination'
         ));
-        $context->article = $context->current_search_result_solr_list->current;
+
+        $context->solr_result = $context->current_search_result_solr_list->current;
         $repeat = true;
     } else { // next
         $context->current_search_result_solr_list->defaultIterator()->next();
         if (!is_null($context->current_search_result_solr_list->current)) {
-            $context->article = $context->current_search_result_solr_list->current;
+            $context->solr_result = $context->current_search_result_solr_list->current;
             $repeat = true;
         } else {
             $context->resetCurrentList();

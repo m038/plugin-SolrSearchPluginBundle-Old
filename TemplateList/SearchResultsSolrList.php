@@ -12,6 +12,7 @@ use Newscoop\ListResult;
 use Newscoop\TemplateList\PaginatedBaseList;
 use Newscoop\SolrSearchPluginBundle\Search\SolrQuery;
 use Newscoop\SolrSearchPluginBundle\TemplateList\SearchResultsSolrCriteria;
+use Newscoop\SolrSearchPluginBundle\TemplateList\SolrResult;
 
 /**
  * SolrSearchPluginBundle List
@@ -28,8 +29,6 @@ class SearchResultsSolrList extends PaginatedBaseList
         if ($language instanceof \Newscoop\Entity\Language) {
             $criteria->core = $language->getRFC3066bis();
         }
-
-        // TODO: Optimize this criteria stuff
         try {
             $result = $service->find($this->convertCriteriaToQuery($criteria));
         } catch (\Exception $e) {
@@ -38,25 +37,48 @@ class SearchResultsSolrList extends PaginatedBaseList
         }
 
         $docs = array();
-        $list = false;
+        $list = null;
         if (is_array($result) && array_key_exists('response', $result) && array_key_exists('docs', $result['response'])) {
 
-            $languageId = $language->getId();
-            $docs = array_map(function ($doc) use ($languageId) {
+            $userRepo = $em->getRepository('Newscoop\Entity\User');
+
+            $docs = array_map(function ($doc) use ($userRepo) {
+                $type = '';
+                $object = null;
+
                 // TODO: Implement way to handle other indexable types
                 switch ($doc['type']) {
                     case 'comment':
+                        $type = $doc['type'];
+                        $object = new \MetaComment($doc['number']);
                         break;
                     case 'user':
+                        $type = $doc['type'];
+                        $user = $userRepo->findOneById($doc['number']);
+                        if ($user instanceof \Newscoop\Entity\User) {
+                            $object = new \MetaUser($user);
+                        }
                         break;
                     case 'article':
                     default:
-                        return new \MetaArticle($doc['language_id'], $doc['number']);
+                        $type = 'article';
+                        $object = new \MetaArticle($doc['language_id'], $doc['number']);
                         break;
+                }
+
+                if ($object !== null) {
+                    return new SolrResult($type, $object);
                 }
             }, $result['response']['docs']);
 
-            $list = $this->paginateList($docs, null, $criteria->maxResults);
+            $this->setTotalCount($result['response']['numFound']);
+            $list = $this->paginateList($docs, null, $criteria->maxResults, null, false);
+
+            // Update the count to the total of returned solr, required to make
+            // $gimme->current_list->count work
+            $list->count = $result['response']['numFound'];
+
+            return $list;
         }
 
         return $list;
@@ -72,13 +94,24 @@ class SearchResultsSolrList extends PaginatedBaseList
      */
     protected function convertParameters($firstResult, $parameters)
     {
-        parent::convertParameters($firstResult, $parameters);
+
+        if (array_key_exists('rows', $parameters)) {
+            $this->criteria->maxResults = $parameters['rows'];
+        }
+        if (array_key_exists('start', $parameters)) {
+            $this->criteria->firstResult = $parameters['start'];
+        }
+
+        unset($parameters['rows']);
+        unset($parameters['start']);
 
         foreach ($this->criteria as $key => $value) {
             if (array_key_exists($key, $parameters)) {
                 $this->criteria->$key = $parameters[$key];
             }
         }
+
+        parent::convertParameters($firstResult, $parameters);
     }
 
     /**
