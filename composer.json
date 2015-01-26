@@ -1,8 +1,8 @@
 {
-    "name": "m038/solr-search-plugin-bundle",
+    "name": "newscoop/solr-search-plugin-bundle",
     "description": "Solr search bundle for Newscoop",
     "keywords": ["newscoop", "cms", "integration", "solr", "search", "indexing"],
-    "version": "0.2",
+    "version": "0.5",
     "type": "newscoop-plugin",
     "license": "GPL-3.0",
     "authors": [
