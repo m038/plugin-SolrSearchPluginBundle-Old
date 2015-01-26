@@ -33,11 +33,20 @@ services:
         arguments:
             - @service_container
 
+    newscoop_solrsearch_plugin.query_request_listener:
+        class: Newscoop\SolrSearchPluginBundle\EventListener\SolrQueryRequestListener
+        arguments:
+            - @newscoop_solrsearch_plugin.query_service
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onRequest }
+
     newscoop_solrsearch_plugin.query_service:
         class: Newscoop\SolrSearchPluginBundle\Services\SolrQueryService
         arguments:
             - @newscoop_solrsearch_plugin.helper
             - @translator
+            - @em
+            - @topic
 
     newscoop_solrsearch_plugin.helper:
         class: "Newscoop\SolrSearchPluginBundle\Services\SolrHelperService"

@@ -188,7 +188,7 @@ class SolrIndexClient implements IndexClientInterface
             }
 
             if (!$response->isSuccessful()) {
-                throw new SolrException($this->translator->trans('plugin.error.response_false'));
+                throw new SolrException($this->translator->trans('plugin.error.response_false') . ' ('.$response->getStatusCode().')');
             }
         }
 

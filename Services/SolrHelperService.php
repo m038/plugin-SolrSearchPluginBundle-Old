@@ -225,6 +225,31 @@ class SolrHelperService
         return $default;
     }
 
+    public function getTypes()
+    {
+        $indexables = $this->getIndexables();
+        $subTypes = array();
+        $removeIndexables = array();
+
+        array_walk($indexables, function ($value, $key) use (&$subTypes, &$removeIndexables) {
+            $type = $this->getConfigValue(str_replace('.', '_', $value).'_types', null);
+            if (is_array($type)) {
+                $subTypes = array_merge($subTypes, $type);
+                $removeIndexables[] = $value;
+            }
+        });
+
+        $indexables = array_filter($indexables, function($value) use ($removeIndexables) {
+            return !in_array($value, $removeIndexables);
+        });
+
+        array_walk($indexables, function(&$value) {
+            $value = str_replace('indexer.', '', $value);
+        });
+
+        return array_merge($indexables, $subTypes);
+    }
+
     /**
      * Creates a new Buzz\Browser client
      *

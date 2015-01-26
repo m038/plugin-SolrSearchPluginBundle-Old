@@ -8,15 +8,17 @@
 
 namespace Newscoop\SolrSearchPluginBundle\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Newscoop\Http\Client;
 use Newscoop\NewscoopException;
+use Newscoop\SolrSearchPluginBundle\Search\SolrQuery;
 use Newscoop\SolrSearchPluginBundle\Services\SolrHelperService;
+
 
 class SearchController extends Controller
 {
@@ -27,49 +29,28 @@ class SearchController extends Controller
     {
         $helper = $this->get('newscoop_solrsearch_plugin.helper');
 
-        if ($helper->getConfigValue('index_type') == SolrHelperService::INDEX_ONLY) {
-
-            $templatesService = $this->container->get('newscoop.templates.service');
-            $response = new Response();
-            $response->headers->set('Content-Type', 'text/html');
-            $response->setContent($templatesService->fetchTemplate('search_index.tpl'));
-
-        } else {
+        if ($helper->getConfigValue('index_type') == SolrHelperService::INDEX_AND_DATA) {
 
             $parameters = $request->query->all();
             $searchParam = trim($request->query->get('q'));
 
+            // Check for webcode and redirect
             if (substr($searchParam, 0, 1) === '+' && $this->container->get('webcode')->findArticleByWebcode(substr($searchParam, 1)) !== null) {
-
                 return $this->redirect(
                     sprintf('/%s', $searchParam), 302
                 );
             }
 
-            $language = $this->container->get('em')
-                ->getRepository('Newscoop\Entity\Language')
-                ->findOneByCode($language);
-
-            if ($language === null) {
-                $language = $this->container->get('em')
-                    ->getRepository('Newscoop\Entity\Language')
-                    ->findByRFC3066bis('de-DE', true);
-                if ($language == null) {
-                    throw new NewscoopException('Could not find default language.');
-                }
-            }
-
-            if (isset($parameters['q']) && $parameters['q'] === '') {
+            if (array_key_exists('q', $parameters) && $parameters['q'] === '') {
 
                 $solrResponseBody = array();
             } else {
 
-                $solrParameters = $this->encodeParameters($parameters);
-                $solrParameters['core-language'] = $language->getRFC3066bis();
+                $solrQuery = $this->encodeParameters($parameters, $language);
                 $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
 
                 try {
-                    $solrResponseBody = $queryService->find($solrParameters);
+                    $solrResponseBody = $queryService->find($solrQuery);
                 } catch(\Exception $e) {
                     $request->query->set('error', $e->getMessage());
 
@@ -80,20 +61,23 @@ class SearchController extends Controller
                     return $response;
                 }
             }
+        }
 
-            if (!array_key_exists('format', $parameters)) {
+        if (array_key_exists('format', $parameters) && $parameters['format'] == 'json') {
 
-                $templatesService = $this->container->get('newscoop.templates.service');
-                $smarty = $templatesService->getSmarty();
+            $response = new JsonResponse($solrResponseBody);
+        } else {
+
+            $templatesService = $this->container->get('newscoop.templates.service');
+            $smarty = $templatesService->getSmarty();
+
+            if (isset($solrResponseBody)) {
                 $smarty->assign('result', json_encode($solrResponseBody));
-
-                $response = new Response();
-                $response->headers->set('Content-Type', 'text/html');
-                $response->setContent($templatesService->fetchTemplate("_views/search_index.tpl"));
-            } elseif ($parameters['format'] === 'json') {
-
-                $response = new JsonResponse($solrResponseBody);
             }
+
+            $response = new Response();
+            $response->headers->set('Content-Type', 'text/html');
+            $response->setContent($templatesService->fetchTemplate('search_index.tpl'));
         }
 
         return $response;
@@ -104,9 +88,24 @@ class SearchController extends Controller
      *
      * @return array
      */
-    protected function encodeParameters(array $parameters)
+    protected function encodeParameters(array $parameters, $language = null)
     {
+        $helper = $this->container->get('newscoop_solrsearch_plugin.helper');
         $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
+
+        // Only needed for output to browser
+        if (array_key_exists('format', $parameters)) {
+            unset($solrParameters['format']);
+        }
+
+        $query = new SolrQuery($parameters);
+
+        $language = $this->container->get('em')
+            ->getRepository('Newscoop\Entity\Language')
+            ->findOneByCode($language);
+        if ($language instanceof \Newscoop\Entity\Language) {
+            $query->core = $language->getRFC3066bis();
+        }
 
         $fq = implode(' AND ', array_filter(array(
             $this->buildSolrTypeParam($parameters),
@@ -114,24 +113,26 @@ class SearchController extends Controller
             '-section:swissinfo', // filter en news
         )));
 
-
         $sort = 'score desc';
         if (array_key_exists('sort', $parameters)) {
             if ($parameters['sort'] === 'latest') {
-                $sort = 'published desc';
+                $query->sort = 'published desc';
             } elseif ($parameters['sort'] === 'oldest') {
-                $sort = 'published asc';
+                $query->sort = 'published asc';
             }
         }
 
-        return array_merge($queryService->encodeParameters($parameters), array(
-            'q' => $this->buildSolrQuery($parameters),
-            'fq' => empty($fq) ? '' : "{!tag=t}$fq",
-            'sort' => $sort,
-            'facet' => 'true',
-            'facet.field' => '{!ex=t}type',
-            'spellcheck' => 'true',
-        ));
+        $query->q = $this->buildSolrQuery($parameters);
+        $query->fq = empty($fq) ? '' : "{!tag=t}$fq";
+        $query->facet = 'true';
+        $query->{'facet.field'} = '{!ex=t}type';
+        $query->spellcheck = 'true';
+
+        // We don't want this
+        $query->df = null;
+        $query->fl = null;
+
+        return $query;
     }
 
     /**
@@ -152,24 +153,25 @@ class SearchController extends Controller
     }
 
     /**
-     * Build solr type param
+     * Build solr source filter
      *
      * @return string
      */
     private function buildSolrTypeParam($parameters)
     {
-        $queryService = $this->container->get('newscoop_solrsearch_plugin.query_service');
-        $types = $queryService->getConfig('types_search');
-        // TODO: Fix later
-        // $types = $this->container->getParameter('SolrSearchPluginBundle');
-        // $types = $types['application']['search']['types'];
+        $queryService = $this->get('newscoop_solrsearch_plugin.query_service');
+        $typesConfig = $this->container->getParameter('types_search');
+        $type = (array_key_exists('type', $parameters)) ? $parameters['type'] : null;
 
-        if (!array_key_exists('type', $parameters) || !array_key_exists($parameters['type'], $types)) {
-            return;
+        if (!empty($type) && array_key_exists($type, $typesConfig)) {
+            $types = (array) $typesConfig[$type];
+        } else {
+            $types = array();
+            foreach ($typesConfig as $typeConfig) {
+                $types = array_merge($types, (array) $typeConfig);
+            }
         }
 
-        $type = $parameters['type'];
-
-        return sprintf('type:(%s)', is_array($types[$type]) ? implode(' OR ', $types[$type]) : $types[$type]);
+        return $queryService->buildSolrSingleValueParam('type', array_unique($types));
     }
 }

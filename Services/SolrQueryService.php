@@ -8,10 +8,12 @@
 
 namespace Newscoop\SolrSearchPluginBundle\Services;
 
+use Doctrine\ORM\EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Translation\Translator;
+use Newscoop\Topic\TopicService;
 use Newscoop\SolrSearchPluginBundle\Exception\SolrException;
 use Newscoop\SolrSearchPluginBundle\Search\SolrQuery;
 use Newscoop\SolrSearchPluginBundle\Services\SolrHelperService;
@@ -62,20 +64,48 @@ class SolrQueryService
     private $translator;
 
     /**
+     * @var Doctrine\ORM\EntityManager
+     */
+    private $em;
+
+    /**
+     * @var Newscoop\Topic\TopicService
+     */
+    private $topicService;
+
+    /**
+     * Request object
+     *
+     * @var Symfony\Component\HttpFoundation\Request
+     */
+    private $request;
+
+    /**
      * @param SolrHelperService $helper
      * @param Translator        $translator
+     * @param EntityManager     $em
+     * @param TopicService      $topic
      */
-    public function __construct(SolrHelperService $helper, Translator $translator)
-    {
+    public function __construct(
+        SolrHelperService $helper,
+        Translator $translator,
+        EntityManager $em,
+        TopicService $topicService
+    ) {
         $this->helper = $helper;
         $this->translator = $translator;
+        $this->em = $em;
+        $this->topicService = $topicService;
+    }
 
-        // TODO: Check if we can use a request listener for this
-        // if ($this->container->isScopeActive('request')) {
-        //     $this->request = $this->container->get('request');
-        // } else {
-        //     $this->request = new Request();
-        // }
+    /**
+     * Set request
+     *
+     * @param Request $request
+     */
+    public function setRequest(Request $request)
+    {
+        $this->request = $request;
     }
 
     /**
@@ -111,15 +141,47 @@ class SolrQueryService
             $toDate === null ? '*' : $toDate->format('Y-m-d\TH:i:s\Z') . '/DAY');
     }
 
+    /**
+     * Build solr topic filter
+     *
+     * @return string
+     */
+    public function buildSolrSingleValueParam($fieldName, $fieldValue)
+    {
+        $param = '';
+
+        if (!empty($fieldValue)) {
+            $fieldValue = (is_array($fieldValue)) ? $fieldValue : array($fieldValue);
+            $param = sprintf('%s:(%s)', $fieldName, implode(' OR ', $fieldValue));
+        }
+
+        return $param;
+    }
+
+    public function buildSolrMultiValueParam($fieldName, $fieldValue)
+    {
+        $param = '';
+
+        if (!empty($fieldValue)) {
+            $fieldValue = (is_array($fieldValue)) ? $fieldValue : array($fieldValue);
+            array_walk($fieldValue, function(&$value) {
+                $value = '"'.trim($value, '"').'"';
+            });
+            $param =  sprintf('%s:(%s)', $fieldName, implode(',', $fieldValue));
+        }
+
+        return $param;
+    }
+
     public function encodeParameters($query)
     {
-        return $query;
+        $query = ($query instanceof SolrQuery) ? $query : new SolrQuery($query);
 
-        // return array(
-        //     'wt' => 'json',
-        //     'rows' => self::LIMIT,
-        //     'start' => max(0, (int) (array_key_exists('start', $parameters) ? $parameters['start'] : 0)),
-        // );
+        if (is_null($query->core) || empty($query->core)) {
+            $query->core = $this->helper->getConfigValue('default_core', null);
+        }
+
+        return $query;
     }
 
     public function decodeParameters(array $parameters)
@@ -131,7 +193,8 @@ class SolrQueryService
     {
         $decoded = json_decode($response, true);
 
-        if ($this->helper->getConfigValue('index_mode') == SolrHelperService::INDEX_AND_DATA) {
+        if ($this->helper->getConfigValue('index_type') == SolrHelperService::INDEX_AND_DATA) {
+
             $decoded['responseHeader']['params']['q'] = $this->request->get('q'); // this might be modified, keep users query
             $decoded['responseHeader']['params']['date'] = $this->request->get('date');
             $decoded['responseHeader']['params']['type'] = $this->request->get('type');
@@ -141,12 +204,11 @@ class SolrQueryService
             $decoded['responseHeader']['params']['topic'] = array_filter(explode(',', $this->request->get('topic', '')));
 
             $decoded['responseHeader']['params']['q_topic'] = null;
-            if ($this->request->get('q') !== '') {
 
-                $topic = $this->em->getRepository('Newscoop\Entity\Topic')
-                    ->findOneByName($this->request->get('q') . ':de');
+            if ($this->request->get('q') !== '') {
+                $topic = $this->topicService->getTopicByIdOrName($this->request->get('q'), 5);
                 if ($topic !== null) {
-                    $decoded['responseHeader']['params']['q_topic'] = $topic->getName(); // TODO: check why was: getName(5)
+                    $decoded['responseHeader']['params']['q_topic'] = $topic->getName();
                 }
             }
         }
