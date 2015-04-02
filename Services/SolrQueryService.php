@@ -17,7 +17,6 @@ use Guzzle\Http\Client;
 use Guzzle\Http\QueryString;
 use Guzzle\Http\Exception\ServerErrorResponseException;
 use Guzzle\Http\Exception\ClientErrorResponseException;
-use Newscoop\Search\QueryInterface;
 use Newscoop\Entity\Topic;
 use Newscoop\SolrSearchPluginBundle\Search\SolrException;
 use Exception;
@@ -26,7 +25,7 @@ use DateTime;
 /**
  * Configuration service for article type
  */
-class SolrQueryService implements QueryInterface
+class SolrQueryService
 {
     const LIMIT = 12;
 

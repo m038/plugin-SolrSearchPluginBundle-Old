@@ -12,7 +12,6 @@ use Symfony\Component\DependencyInjection\Container;
 use Newscoop\Search\IndexClientInterface;
 use Newscoop\Search\ServiceInterface;
 use Newscoop\Search\DocumentInterface;
-use Newscoop\Search\QueryInterface;
 use Newscoop\Http\Client;
 use Guzzle\Http\Message\Response;
 use SimpleXMLElement;
@@ -231,7 +230,7 @@ class SolrIndexClient implements IndexClientInterface
         return sprintf('{%s}', implode(',', $commands));
     }
 
-    public function find(QueryInterface $query)
+    public function find($query)
     {
 
     }
